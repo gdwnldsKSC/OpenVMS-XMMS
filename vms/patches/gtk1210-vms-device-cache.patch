@@ -5,7 +5,7 @@
  #define ino_cpy(dest,from) (memcpy((void*)dest,(void*)from,3*sizeof(ino_t)))
  #define ino_eql(e1,e2) (memcmp((void *)e1,(void *)e2,3*sizeof(ino_t))==0)
 +
-+/* OpenVMS-XMMS: legacy st_dev is a borrowed device-name string, not a
++/* OpenVMS-XMMS modification, 2026-11-09: legacy st_dev is a borrowed device-name string, not a
 + * unique numeric ID. Compare its value and copy it before retaining it
 + * across CRTL calls. The complete three-word FID remains the file ID.
 + */

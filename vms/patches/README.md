@@ -24,7 +24,7 @@ The SHA-256 of `gtk/gtk/gtkfilesel.c` before and after the patch is:
 | Source | SHA-256 |
 | --- | --- |
 | Original | `587b0c774b2973245dc33b37f49aacd222115e6dd7fcb0e1680ad300f62bcc5d` |
-| Patched | `f96a974c57e283c52a20dbf7dffb241a04f340fd029450fb22f7071ceed1d9dd` |
+| Patched | `e7b82cbce24d7ce0eb94616f2cf85690833f195d8b529b29c91d32018b3de82c` |
 
 The build procedure separately applies the published DECwindows shape-header
 include correction. It copies the owned compiler preinclude headers into the

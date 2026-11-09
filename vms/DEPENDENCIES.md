@@ -57,6 +57,8 @@ Use native UnZip/self-extraction, or a transfer that preserves every filename
 and converts text record formats correctly. Names such as `I18N.H.IN` need
 extended filename syntax (`I18N^.H.IN`) in DCL. C/H/COM source transferred as
 plain text should have stream-LF records. Preserve binary files as binary.
+`BUILD.COM` saves the caller's DCL parse style, enables extended parsing for
+the source filenames, and restores the original style when it returns.
 
 Obtain `VMS_JACKETS.EXE` through the native OPL PCSI kit, either by installing
 OPL in the build environment or extracting the runtime into a private

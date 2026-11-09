@@ -89,6 +89,7 @@ $ read/end=patch_done gtk_source line
 $ pos = f$locate(old_include,line)
 $ if pos .lt. f$length(line)
 $ then
+$   write gtk_fixed "/* OpenVMS-XMMS 2026-11-09: published DECwindows SHAPE include fix. */"
 $   line = f$extract(0,pos,line) + new_include + -
       f$extract(pos+f$length(old_include),f$length(line),line)
 $ endif

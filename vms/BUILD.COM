@@ -7,6 +7,8 @@ $! headers and MMOV.OLB must be installed. No installation is performed here.
 $ on error then goto failed
 $ on control_y then goto interrupted
 $ old_default = f$environment("DEFAULT")
+$ old_parse = f$getjpi("","PARSE_STYLE_PERM")
+$ set process/parse_style=extended
 $ procedure = f$environment("PROCEDURE")
 $ here = f$parse(procedure,,,"DEVICE") + f$parse(procedure,,,"DIRECTORY")
 $ rootdev = f$parse("[-]",here,,"DEVICE")
@@ -135,6 +137,7 @@ $ link/executable=[.VMS_BUILD]XMMS.EXE/map=[.VMS_BUILD]XMMS.MAP -
     /full/traceback [.VMS_BUILD]XMMS.OPT/options
 $ write sys$output "XMMS native build complete: XMMS_ROOT:[VMS_BUILD]XMMS.EXE"
 $ set default 'old_default'
+$ set process/parse_style='old_parse'
 $ exit 1
 $ compile: subroutine
 $ on error then goto compile_failed
@@ -161,4 +164,5 @@ $ status = $status
 $ cleanup:
 $ if f$trnlnm("OPTIONS") .nes. "" then close options
 $ set default 'old_default'
+$ set process/parse_style='old_parse'
 $ exit 'status'
