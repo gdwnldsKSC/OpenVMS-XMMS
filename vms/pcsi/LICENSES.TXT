@@ -1,0 +1,26 @@
+XMMS 1.2.11 for OpenVMS Alpha
+
+XMMS is copyright its original authors and contributors. See AUTHORS.TXT,
+COPYING.TXT and the source file notices. The OpenVMS adaptations retain
+these terms, including GPL version 2 or later where the source specifies it.
+
+The bundled GTK and GLib runtime libraries are built from the published
+GTK+ 1.2.10 OpenVMS A1 source distribution. Their original COPYING texts
+are installed in [.LICENSES]GTK_COPYING.TXT and GLIB_COPYING.TXT. The
+archive's additional license text is GTK_PORT_LICENSE.TXT. Individual
+source notices remain in the corresponding-source companion archive.
+
+The OpenVMS Porting Library runtime is supplied under its original component
+terms. The archive's Compaq license and GNU GPL text are installed as
+[.LICENSES]OPL_LICENSE.TXT and OPL_GPL.TXT. Component notices remain in its
+source archive. No ownership or attribution notices have been removed.
+
+The companion XMMS-SOURCE-V1_2_11.ZIP contains the corresponding XMMS source,
+exact GTK/GLib sources and build changes, and OPL sources and notices.
+SOURCE_INFO.TXT records the checksum of the companion supplied by the
+builder. Distribute this source companion with the binary kit; source URLs
+alone are not a substitute for the corresponding source used for a release.
+
+DECwindows, OpenVMS and MMOV are separately installed dependencies under
+their own licenses. This XMMS kit contains no MMOV SDK headers, libraries,
+server images, audio drivers, license keys or licenses for those products.

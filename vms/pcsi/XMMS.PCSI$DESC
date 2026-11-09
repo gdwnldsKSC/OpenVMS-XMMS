@@ -1,0 +1,30 @@
+product XMMS AXPVMS XMMS V1.2-11 full ;
+    software VSI AXPVMS VMS version minimum V8.4-2L2 ;
+    software VSI AXPVMS DWMOTIF version minimum V1.7 ;
+    software DEC AXPVMS MMOV version minimum V2.2 ;
+
+    directory [XMMS] protection public ;
+    directory [XMMS.LIB] protection public ;
+    directory [XMMS.LICENSES] protection public ;
+    file [XMMS]XMMS.EXE protection public ;
+    file [XMMS]XMMS.COM protection public ;
+    file [XMMS]COPYING.TXT protection public ;
+    file [XMMS]AUTHORS.TXT protection public ;
+    file [XMMS]LICENSES.TXT protection public ;
+    file [XMMS]SOURCE_INFO.TXT protection public ;
+    file [XMMS]MANIFEST.TXT protection public ;
+    file [XMMS]RELEASE_NOTES.TXT protection public release notes ;
+    file [XMMS.LIB]LIBGTK.EXE protection public ;
+    file [XMMS.LIB]LIBGDK.EXE protection public ;
+    file [XMMS.LIB]LIBGLIB.EXE protection public ;
+    file [XMMS.LIB]LIBGMODULE.EXE protection public ;
+    file [XMMS.LIB]VMS_JACKETS.EXE protection public ;
+    file [XMMS.LICENSES]GTK_COPYING.TXT protection public ;
+    file [XMMS.LICENSES]GLIB_COPYING.TXT protection public ;
+    file [XMMS.LICENSES]GTK_PORT_LICENSE.TXT protection public ;
+    file [XMMS.LICENSES]OPL_LICENSE.TXT protection public ;
+    file [XMMS.LICENSES]OPL_GPL.TXT protection public ;
+
+    execute test "@PCSI$DESTINATION:[XMMS]XMMS.COM --version" ;
+    information RUN_XMMS phase after with helptext ;
+end product ;

@@ -1,0 +1,24 @@
+=PRODUCT XMMS AXPVMS XMMS V1.2-11 Full
+1 'PRODUCT
+=prompt XMMS 1.2.11 desktop music player for OpenVMS Alpha
+1 'PRODUCER
+=prompt XMMS contributors and OpenVMS port contributors
+1 'NOTICE
+=prompt Copyright XMMS, GTK, GLib and OpenVMS Porting Library contributors
+1 'LICENSE
+=prompt GNU GPL / GNU Library GPL and component licenses; no XMMS PAK required
+1 RUN_XMMS
+=prompt Start XMMS from an existing DECwindows DECterm.
+    @SYS$COMMON:[XMMS]XMMS.COM
+    @SYS$COMMON:[XMMS]XMMS.COM "SYS$LOGIN:SONG.WAV"
+
+The kit includes its GTK, GDK, GLib, GModule and Porting Library runtimes.
+MMOV must be configured and running. On the ES1371 emulator, use the working
+MMOV compatibility kit supplied separately with this release.
+
+The verification procedure loads the program and displays its version.
+It does not open a display or test audio playback. Installation requires
+no compiler, development headers, GNV, desktop changes or XMMS startup job.
+
+If /DESTINATION selected a different root, use that root's [XMMS] directory.
+Keep XMMS-SOURCE-V1_2_11.ZIP with the binary kit when redistributing it.

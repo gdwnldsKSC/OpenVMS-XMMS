@@ -1,0 +1,38 @@
+XMMS 1.2.11 for OpenVMS Alpha - PCSI V1.2-11
+
+Target: VSI OpenVMS Alpha V8.4-2L2, DECwindows Motif V1.7, MMOV V2.2.
+This port builds the classic GTK 1.2 desktop interface with local WAV and
+MP3 decoding and native MMOV waveform output. It uses 32-bit pointers and
+IEEE floating point. The toolkit runtimes are private to this installation.
+
+Start from an existing DECwindows DECterm:
+  @SYS$COMMON:[XMMS]XMMS.COM
+  @SYS$COMMON:[XMMS]XMMS.COM "SYS$LOGIN:SONG.WAV"
+
+The supplied runner locates its own installation and defines process-local
+library logical names. It uses the current display. It does not start or
+replace a desktop session, change display access, or modify login files.
+For a nondefault PRODUCT /DESTINATION, substitute that root for SYS$COMMON.
+
+MMOV must already be running and have a working audio device. On this ES1371
+emulator installation, use the separately supplied patched MMOV V2.2 kit
+and its standard documented startup/shutdown configuration. XMMS does not
+replace or reconfigure MMOV. Its volume control scales its own PCM stream;
+the MMOV system mixer remains shared with other multimedia applications.
+
+WAV, MP3 and MMOV plugins are linked into the image. Unix remote session
+control and optional plugins are not built. The default skin is compiled
+into the image. Custom skins must be unpacked into directories before use.
+
+PRODUCT INSTALL runs a version/loader check, which requires no display.
+This check does not establish audio-device availability or desktop playback.
+The normal desktop is used for functional playback verification.
+
+Removal:
+  PRODUCT REMOVE XMMS /PRODUCER=XMMS /BASE_SYSTEM=AXPVMS
+Close XMMS first. PCSI removes its managed runtime files and directories.
+User preferences and playlists under the user's home directory are retained.
+The separate MMOV and DECwindows installations remain managed independently.
+
+Keep XMMS-SOURCE-V1_2_11.ZIP with the binary kit. See LICENSES.TXT and
+SOURCE_INFO.TXT for component notices and corresponding-source information.
