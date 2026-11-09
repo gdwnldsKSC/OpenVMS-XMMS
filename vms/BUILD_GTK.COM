@@ -1,4 +1,4 @@
-$! Build the unmodified public gtk1210-openvms-a1 source port.
+$! Build the public gtk1210-openvms-a1 source port for the current CRTL.
 $! P1 = GTK tree (DKA100:[GTK1210]), P2 = OPL headers (DKA100:[OPL]),
 $! P3 = OPL runtime (default SYS$SHARE:VMS_JACKETS.EXE).
 $! Only this dependency build tree is configured; no system files are changed.
@@ -33,6 +33,8 @@ $ write setup "$ exit 1"
 $ close setup
 $ copy 'here'BUILD_GTK_CC.COM []VMS_CC.COM
 $ copy 'here'BUILD_GTK_SHARE.COM []VMS_SHARE.COM
+$ copy 'here'GTK_BUILD_CONFIG.H []VMS_BUILD_CONFIG.H
+$ copy 'here'VMS_CRTL.H []VMS_CRTL.H
 $! Published gtk1210-a1 patch: DECwindows keeps SHAPE.H directly in X11.
 $! Apply once in this dependency build tree, keeping the preceding file version.
 $ set noon
@@ -42,9 +44,7 @@ $ set on
 $ on error then goto failed
 $ if shape_status .and. 1
 $ then
-$   edit/edt/command=SYS$INPUT GROOT:[GTK.GDK]GDKWINDOW.C
-s%X11/extensions/shape.h%X11/shape.h%w/notype
-exit
+$   call patch_shape
 $ endif
 $! Skip POSIX configure helper generation; native compilation needs only headers.
 $ copy [.GLIB]CONFIG.H_VMS [.GLIB]CONFIG.H
@@ -77,3 +77,34 @@ $ cleanup:
 $ if f$trnlnm("SETUP") .nes. "" then close setup
 $ set default 'old_default'
 $ exit 'status'
+$ patch_shape: subroutine
+$ on error then goto patch_failed
+$ on control_y then goto patch_interrupted
+$ old_include = "X11/extensions/shape.h"
+$ new_include = "X11/shape.h"
+$ open/read gtk_source GROOT:[GTK.GDK]GDKWINDOW.C
+$ open/write gtk_fixed GROOT:[GTK.GDK]GDKWINDOW.C
+$ patch_next:
+$ read/end=patch_done gtk_source line
+$ pos = f$locate(old_include,line)
+$ if pos .lt. f$length(line)
+$ then
+$   line = f$extract(0,pos,line) + new_include + -
+      f$extract(pos+f$length(old_include),f$length(line),line)
+$ endif
+$ write gtk_fixed line
+$ goto patch_next
+$ patch_done:
+$ close gtk_source
+$ close gtk_fixed
+$ exit 1
+$ patch_interrupted:
+$ patch_status = %x0000002c
+$ goto patch_cleanup
+$ patch_failed:
+$ patch_status = $status
+$ patch_cleanup:
+$ if f$trnlnm("GTK_SOURCE") .nes. "" then close gtk_source
+$ if f$trnlnm("GTK_FIXED") .nes. "" then close gtk_fixed
+$ exit 'patch_status'
+$ endsubroutine

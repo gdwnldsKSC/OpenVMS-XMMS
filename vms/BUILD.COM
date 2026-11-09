@@ -41,7 +41,7 @@ $ copy [.VMS]CONFIG.H []CONFIG.H
 $ copy [.XMMS]I18N^.H.IN [.XMMS]I18N.H
 $ defs = "HAVE_CONFIG_H,XMMS_STATIC_PLUGINS,VMS_AS_IS,GENERIC_MOTIF_REDEFINES,GENERIC_PTHREAD_REDEFINES"
 $ includes = "XMMS_ROOT:[000000],XMMS_ROOT:[XMMS],GROOT:[GTK],GROOT:[GLIB],GROOT:[GLIB.GMODULE],VJID:,MMOV$INCLUDE:"
-$ ccflags = "/NAMES=(AS_IS,SHORTEN)/POINTER_SIZE=32/FLOAT=IEEE/IEEE=DENORM/REENTRANCY=MULTITHREAD/STANDARD=RELAXED_ANSI89/PREFIX=ALL"
+$ ccflags = "/NAMES=(AS_IS,SHORTEN)/POINTER_SIZE=32/FLOAT=IEEE/IEEE=DENORM/REENTRANCY=MULTITHREAD/STANDARD=RELAXED_ANSI89/PREFIX=ALL/MAIN=POSIX_EXIT"
 $ open/write options [.VMS_BUILD]XMMS.OPT
 $ write options "CASE_SENSITIVE=YES"
 $ call compile "[.XMMS]BMP.C" "[.VMS_BUILD.CORE]BMP.OBJ"
@@ -142,7 +142,7 @@ $ source_dir = f$parse(p1,,,"DEVICE") + f$parse(p1,,,"DIRECTORY")
 $ module = f$parse(p1,,,"NAME")
 $ write sys$output "CC ''p1'"
 $ cc 'ccflags' /define=('defs') /include=('source_dir','includes') -
-    /object='p2' NL:'module'.C+VJID:VMS_JACKETS.H+'p1'
+    /object='p2' NL:'module'.C+XMMS_ROOT:[VMS]VMS_CRTL.H+VJID:VMS_JACKETS.H+'p1'
 $ write options p2
 $ exit 1
 $ compile_failed:

@@ -5,6 +5,13 @@ MMOV installation. The first native build and desktop playback are still
 pending validation. No GNV, Linux audio driver, Perl or Autoconf installation
 is required by these DCL build procedures.
 
+The isolated build system's native product registry reports these exact
+installed dependencies:
+
+- `VSI AXPVMS VMS V8.4-2L2`
+- `VSI AXPVMS DWMOTIF V1.7-F`
+- `DEC AXPVMS MMOV V2.2`
+
 ## Original source archives
 
 Download these outside the XMMS source tree. Preserve their original license

@@ -1,0 +1,186 @@
+--- a/gtk/gtk/gtkfilesel.c
++++ b/gtk/gtk/gtkfilesel.c
+@@ -62,6 +62,16 @@
+ */
+ #define ino_cpy(dest,from) (memcpy((void*)dest,(void*)from,3*sizeof(ino_t)))
+ #define ino_eql(e1,e2) (memcmp((void *)e1,(void *)e2,3*sizeof(ino_t))==0)
++
++/* OpenVMS-XMMS: legacy st_dev is a borrowed device-name string, not a
++ * unique numeric ID. Compare its value and copy it before retaining it
++ * across CRTL calls. The complete three-word FID remains the file ID.
++ */
++static gboolean
++vms_device_equal (const gchar *a, const gchar *b)
++{
++  return a && b && strcmp (a, b) == 0;
++}
+ #endif
+ 
+ #define DIR_LIST_WIDTH   180
+@@ -127,7 +137,11 @@
+   ino_t inode[3];
+ #endif
+   time_t mtime;
++#ifndef __VMS
+   dev_t device;
++#else
++  gchar *device; /* owned device-name copy */
++#endif
+ 
+   gint entry_count;
+   gchar *name_buffer; /* memory segment containing names of all entries */
+@@ -1703,6 +1717,9 @@
+ {
+   g_free(sent->name_buffer);
+   g_free(sent->entries);
++#ifdef __VMS
++  g_free(sent->device);
++#endif
+   g_free(sent);
+ }
+ 
+@@ -1994,20 +2011,31 @@
+   char path_buf[MAXPATHLEN*2];
+   gint path_buf_len;
+ 
++#ifndef __VMS
+   sent = g_new(CompletionDirSent, 1);
++#else
++  sent = g_new0(CompletionDirSent, 1);
++#endif
+   sent->mtime = sbuf->st_mtime;
+ #ifndef __VMS
+   sent->inode = sbuf->st_ino;
+ #else
+   ino_cpy(sent->inode,sbuf->st_ino);
+ #endif
++#ifndef __VMS
+   sent->device = sbuf->st_dev;
++#else
++  sent->device = g_strdup(sbuf->st_dev);
++#endif
+ 
+   path_buf_len = strlen(dir_name);
+ 
+   if (path_buf_len > MAXPATHLEN)
+     {
+       cmpl_errno = CMPL_ERRNO_TOO_LONG;
++#ifdef __VMS
++      free_dir_sent(sent);
++#endif
+       return NULL;
+     }
+ 
+@@ -2018,6 +2046,9 @@
+   if(!directory)
+     {
+       cmpl_errno = errno;
++#ifdef __VMS
++      free_dir_sent(sent);
++#endif
+       return NULL;
+     }
+ 
+@@ -2031,6 +2062,9 @@
+ 	{
+ 	  cmpl_errno = CMPL_ERRNO_TOO_LONG;
+  	  closedir(directory);
++#ifdef __VMS
++	  free_dir_sent(sent);
++#endif
+ 	  return NULL;
+ 	}
+     }
+@@ -2051,6 +2085,9 @@
+ 	{
+ 	  cmpl_errno = errno;
+ 	  closedir(directory);
++#ifdef __VMS
++	  free_dir_sent(sent);
++#endif
+ 	  return NULL;
+ 	}
+ 
+@@ -2111,7 +2148,14 @@
+       for (i = 0; i < n_no_stat_dirs; i++)
+ 	{
+ 	  if (stat (no_stat_dirs[i].name, &no_stat_dirs[i].statbuf) == 0)
+-	    no_stat_dirs[i].present = TRUE;
++            {
++              no_stat_dirs[i].present = TRUE;
++#ifdef __VMS
++              /* This two-entry cache intentionally lasts for the process. */
++              no_stat_dirs[i].statbuf.st_dev =
++                g_strdup(no_stat_dirs[i].statbuf.st_dev);
++#endif
++            }
+ 	}
+     }
+ 
+@@ -2125,7 +2169,11 @@
+   for (i=0; i<n_no_stat_dirs; i++)
+     {
+       if (no_stat_dirs[i].present &&
+-	  (no_stat_dirs[i].statbuf.st_dev == result->st_dev) &&
++#ifndef __VMS
++          (no_stat_dirs[i].statbuf.st_dev == result->st_dev) &&
++#else
++          vms_device_equal(no_stat_dirs[i].statbuf.st_dev, result->st_dev) &&
++#endif
+ #ifndef __VMS
+ 	  (no_stat_dirs[i].statbuf.st_ino == result->st_ino))
+ #else
+@@ -2163,8 +2211,12 @@
+ #else
+       if(ino_eql(sent->inode,sbuf.st_ino) &&
+ #endif
+-	 sent->mtime == sbuf.st_mtime &&
+-	 sent->device == sbuf.st_dev)
++         sent->mtime == sbuf.st_mtime &&
++#ifndef __VMS
++         sent->device == sbuf.st_dev)
++#else
++         vms_device_equal(sent->device, sbuf.st_dev))
++#endif
+ 	return attach_dir(sent, dir_name, cmpl_state);
+ 
+       cdsl = cdsl->next;
+@@ -2271,6 +2323,10 @@
+   gchar *last_slash;
+   gchar *new_name;
+   gchar c = 0;
++#ifdef __VMS
++  gchar *device;
++  gboolean same_device;
++#endif
+ 
+   last_slash = strrchr(cmpl_dir->fullname, '/');
+ 
+@@ -2284,16 +2340,26 @@
+       last_slash[1] = 0;
+     }
+ 
++#ifdef __VMS
++  device = g_strdup(sbuf->st_dev);
++#endif
+   if (stat(cmpl_dir->fullname, &parbuf) < 0)
+     {
+       cmpl_errno = errno;
++#ifdef __VMS
++      g_free(device);
++#endif
+       return FALSE;
+     }
++#ifdef __VMS
++  same_device = vms_device_equal(device, parbuf.st_dev);
++  g_free(device);
++#endif
+ 
+ #ifndef __VMS
+   if (parbuf.st_ino == sbuf->st_ino && parbuf.st_dev == sbuf->st_dev)
+ #else
+-  if (ino_eql(parbuf.st_ino,sbuf->st_ino) && parbuf.st_dev == sbuf->st_dev)
++  if (ino_eql(parbuf.st_ino,sbuf->st_ino) && same_device)
+ #endif
+     /* it wasn't a link */
+     return TRUE;

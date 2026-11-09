@@ -18,7 +18,7 @@
 #include <time.h>
 #include <unistd.h>
 #include "xmms/plugin.h"
-#include <mme/mme_api.h>
+#include "mmov_api.h"
 
 #ifdef __VMS
 /* The MMOV client and callback ABI carry pointers in 32-bit values. */

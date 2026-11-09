@@ -16,3 +16,11 @@ config.cache
 stamp-h1
 Makefile
 build/
+
+# Native generated configuration and product output
+/VMS_BUILD/
+/vms_build/
+/config.h
+/xmms/i18n.h
+*.PCSI
+*.pcsi

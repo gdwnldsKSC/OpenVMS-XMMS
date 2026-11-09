@@ -5,6 +5,11 @@ The target is VSI OpenVMS Alpha V8.4-2L2 with DECwindows Motif V1.7 and
 MMOV V2.2. Native packaging, clean installation, playback and removal are
 pending validation; source review alone is not a release qualification.
 
+The native product registry confirms `VSI AXPVMS VMS V8.4-2L2`,
+`VSI AXPVMS DWMOTIF V1.7-F` and `DEC AXPVMS MMOV V2.2`. The dependency
+statements use these registered product names; `OPENVMS` is a separate
+platform registration.
+
 The runtime is self-contained apart from those system products. Its six
 images are `XMMS.EXE`, `LIBGTK.EXE`, `LIBGDK.EXE`, `LIBGLIB.EXE`,
 `LIBGMODULE.EXE` and `VMS_JACKETS.EXE`. GLib's thread object is linked into
@@ -30,6 +35,20 @@ Prepare a ZIP containing the **corresponding source for these exact images**:
 - The original OPL source distribution with its component licenses/notices
   and build instructions for the bundled runtime.
 - A record of the source revisions/archive checksums and build changes.
+
+Create the companion outside all three source roots with the supplied host
+helper, after the sources used by the native build are frozen:
+
+```text
+python vms/pcsi/package_source.py --xmms-root REPO --gtk-root EXACT_PATCHED_GTK --opl-root NORMALIZED_OPL --output NEW_EXTERNAL.zip
+```
+
+The helper requires explicit source roots, rejects an existing output,
+excludes build products and private material, records per-file SHA-256,
+and reads every ZIP member back. It also verifies that the inputs did not
+change during packaging. OPL text must already have its native variable
+records decoded when preparing sources on a non-VMS host. This Python tool
+is only for preparing the source companion; target installation uses PCSI.
 
 The source companion must not contain MMOV SDK headers, libraries or other
 proprietary system development files. Those remain external build dependencies.
