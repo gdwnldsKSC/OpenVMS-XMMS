@@ -33,6 +33,20 @@
 #include "mpg123.h"
 #include "libxmms/util.h"
 
+/* OpenVMS port, 2026-11-09: native socket lengths use size_t (int in
+ * the legacy C interface), and the Alpha headers do not define socklen_t.
+ * Keep the compatibility type local instead of changing system headers.
+ */
+#ifdef __VMS
+#ifdef _DECC_V4_SOURCE
+typedef int xmms_socklen_t;
+#else
+typedef size_t xmms_socklen_t;
+#endif
+#else
+typedef socklen_t xmms_socklen_t;
+#endif
+
 #define min(x,y) ((x)<(y)?(x):(y))
 #define min3(x,y,z) (min(x,y)<(z)?min(x,y):(z))
 #define min4(x,y,z,w) (min3(x,y,z)<(w)?min3(x,y,z):(w))
@@ -329,7 +343,7 @@ static void *http_buffer_loop(void *arg)
 	     *status, *url, *temp, *file;
 	gchar *chost;
 	gint cnt, written, error, port, cport;
-	socklen_t err_len;
+	xmms_socklen_t err_len;
 	gboolean redirect;
 	int udp_sock = 0;
 	fd_set set;
@@ -757,10 +771,10 @@ static int udp_establish_listener(int *sock)
 {
 #ifdef USE_IPV6
 	struct sockaddr_in6 sin;
-	socklen_t sinlen = sizeof (struct sockaddr_in6);
+	xmms_socklen_t sinlen = sizeof (struct sockaddr_in6);
 #else
 	struct sockaddr_in sin;
-	socklen_t sinlen = sizeof (struct sockaddr_in);
+	xmms_socklen_t sinlen = sizeof (struct sockaddr_in);
 #endif
 	
 #ifdef DEBUG_UDP
@@ -833,7 +847,7 @@ static int udp_check_for_data(int sock)
 #else
 	struct sockaddr_in from;
 #endif
-	socklen_t fromlen;
+	xmms_socklen_t fromlen;
 
 	fromlen = sizeof(from);
 	
