@@ -25,6 +25,9 @@ notices. The SHA-256 values below describe the downloaded bytes.
 | [Published GTK A1 portability patch](https://www.digiater.nl/openvms/decus/vmslt03a/vu/gtk1210-a1_patch.tar) | `a51b249b10556a81f8da67d0ac25f073f561b713f82b41a21b201000a9add6dc` |
 
 The GTK archive includes its matching GLib sources and native build files.
+Apply the small [VMS file-picker patch](patches/README.md) to the original
+GTK download before transfer. The kit's corresponding-source archive already
+contains the patched GTK tree.
 The OPL PCSI kit contains the runtime; the separate source archive supplies
 `VMS_JACKETS.H`, the DECwindows and pthread name mappings, and support headers.
 The source archive is an Alpha self-extracting Info-ZIP archive. Native
@@ -82,8 +85,10 @@ $ @[.VMS]BUILD     DKA100:[GTK1210] DKA100:[OPL] DKA100:[OPL]VMS_JACKETS.EXE
 Omit the third argument when using `SYS$SHARE:VMS_JACKETS.EXE`. The GTK build
 configures only its dependency tree. It uses the archive's generated enum
 and marshal files, applies the published DECwindows `X11/shape.h` include
-correction, and supplies the POSIX thread result conventions. Compiler and
-linker failures are returned to the caller. Generated objects and the XMMS
+correction, and supplies the POSIX thread result conventions. A compiler
+preinclude reads current CRTL declarations before the older OPL name mappings.
+Compiler and linker failures are returned to the caller; the player uses
+`/MAIN=POSIX_EXIT` so Unix-style failures become failing VMS statuses. Generated objects and the XMMS
 image go under `[XMMS.VMS_BUILD]`.
 
 All components use 32-bit pointers, case-preserving shortened external names
