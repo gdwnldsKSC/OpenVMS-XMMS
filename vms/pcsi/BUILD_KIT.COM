@@ -9,10 +9,18 @@ $! MATERIAL, OUTPUT and VERIFY under P1 must not already exist.
 $ on warning then goto failed
 $ on control_y then goto interrupted
 $ old_default = f$environment("DEFAULT")
+$ old_parse = f$getjpi("","PARSE_STYLE_PERM")
+$ set process/parse_style=extended
 $ procedure = f$environment("PROCEDURE")
 $ here = f$parse(procedure,,,"DEVICE") + f$parse(procedure,,,"DIRECTORY")
-$ vms_dir = f$parse("[-]",here,,"DEVICE") + f$parse("[-]",here,,"DIRECTORY")
-$ source_dir = f$parse("[-]",vms_dir,,"DEVICE") + f$parse("[-]",vms_dir,,"DIRECTORY")
+$! Use the actual procedure path, independent of the caller's default directory.
+$ kit_device = f$parse(procedure,,,"DEVICE")
+$ kit_directory = f$parse(procedure,,,"DIRECTORY")
+$ dir_length = f$length(kit_directory)
+$ if dir_length .lt. 11 then goto bad_layout
+$ if f$edit(f$extract(dir_length-10,10,kit_directory),"UPCASE") .nes. ".VMS.PCSI]" then goto bad_layout
+$ vms_dir = kit_device + f$extract(0,dir_length-6,kit_directory) + "]"
+$ source_dir = kit_device + f$extract(0,dir_length-10,kit_directory) + "]"
 $ if p1 .eqs. "" then goto usage
 $ if p2 .eqs. "" then p2 = "DKA100:[GTK1210]"
 $ if p3 .eqs. "" then p3 = "SYS$SHARE:VMS_JACKETS.EXE"
@@ -37,7 +45,7 @@ $ if f$search("XMMS_KIT:[000000]MATERIAL.DIR") .nes. "" then goto occupied
 $ if f$search("XMMS_KIT:[000000]OUTPUT.DIR") .nes. "" then goto occupied
 $ if f$search("XMMS_KIT:[000000]VERIFY.DIR") .nes. "" then goto occupied
 $! Check every required input before creating output directories.
-$ app_image = f$parse("[.VMS_BUILD]XMMS.EXE",source_dir)
+$ app_image = kit_device + f$extract(0,dir_length-10,kit_directory) + ".VMS_BUILD]XMMS.EXE"
 $ if f$search(app_image) .eqs. "" then goto missing
 $ if f$search(vms_dir + "RUN.COM") .eqs. "" then goto missing
 $ if f$search("XMMS_GTK:[GTK.GTK]LIBGTK.EXE") .eqs. "" then goto missing
@@ -110,6 +118,7 @@ $ write sys$output "%XMMS-I-KITBUILT, runtime kit and source companion in XMMS_K
 $ write sys$output "%XMMS-I-VERIFIED, all re-extracted material matches native MD5/RMS attributes"
 $ write sys$output "Next: install, launch, play and remove on the isolated clean system."
 $ set default 'old_default'
+$ set process/parse_style='old_parse'
 $ exit 1
 $ copy_checked: subroutine
 $ on warning then goto copy_failed
@@ -148,6 +157,10 @@ $ compare_failed:
 $ compare_status = $status
 $ exit 'compare_status'
 $ endsubroutine
+$ bad_layout:
+$ write sys$error "Expected BUILD_KIT.COM in the source tree's [.VMS.PCSI] directory."
+$ status = %x0000002c
+$ goto cleanup
 $ usage:
 $ write sys$error "Usage: @BUILD_KIT work-directory GTK-root OPL-image exact-source.ZIP OPL-source-directory"
 $ write sys$error "Create the work directory first; its MATERIAL/OUTPUT/VERIFY subdirectories must be absent."
@@ -174,4 +187,5 @@ $ cleanup:
 $ if f$trnlnm("MANIFEST") .nes. "" then close manifest
 $ if f$trnlnm("SOURCE_INFO") .nes. "" then close source_info
 $ set default 'old_default'
+$ set process/parse_style='old_parse'
 $ exit 'status'

@@ -11,8 +11,13 @@ $ old_parse = f$getjpi("","PARSE_STYLE_PERM")
 $ set process/parse_style=extended
 $ procedure = f$environment("PROCEDURE")
 $ here = f$parse(procedure,,,"DEVICE") + f$parse(procedure,,,"DIRECTORY")
-$ rootdev = f$parse("[-]",here,,"DEVICE")
-$ rootdir = f$parse("[-]",here,,"DIRECTORY")
+$! Derive from the procedure itself; relative F$PARSE can use the caller's default.
+$ rootdev = f$parse(procedure,,,"DEVICE")
+$ procedure_dir = f$parse(procedure,,,"DIRECTORY")
+$ dir_length = f$length(procedure_dir)
+$ if dir_length .lt. 6 then goto bad_layout
+$ if f$edit(f$extract(dir_length-5,5,procedure_dir),"UPCASE") .nes. ".VMS]" then goto bad_layout
+$ rootdir = f$extract(0,dir_length-5,procedure_dir) + "]"
 $ source_default = rootdev + rootdir
 $ root = rootdev + f$extract(0,f$length(rootdir)-1,rootdir) + ".]"
 $ define/nolog/translation=concealed XMMS_ROOT 'root'
@@ -164,6 +169,10 @@ $ compile_failed:
 $ compile_status = $status
 $ exit 'compile_status'
 $ endsubroutine
+$ bad_layout:
+$ write sys$error "Expected this procedure in the source tree's [.VMS] directory."
+$ status = %x0000002c
+$ goto cleanup
 $ missing:
 $ write sys$error "Missing GTK, OPL or MMOV development files. Check P1/P2/P3 and MMOV$INCLUDE."
 $ status = %x0000002c

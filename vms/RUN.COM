@@ -12,8 +12,13 @@ $ then
 $   rootdev = f$parse(here,,,"DEVICE")
 $   rootdir = f$parse(here,,,"DIRECTORY")
 $ else
-$   rootdev = f$parse("[-]",here,,"DEVICE")
-$   rootdir = f$parse("[-]",here,,"DIRECTORY")
+$   rootdev = f$parse(here,,,"DEVICE")
+$   rootdir = f$parse(here,,,"DIRECTORY")
+$   rootlen = f$length(rootdir)
+$   if rootlen .lt. 6 then goto bad_source_location
+$   suffix = f$edit(f$extract(rootlen-5,5,rootdir),"UPCASE")
+$   if suffix .nes. ".VMS]" then goto bad_source_location
+$   rootdir = f$extract(0,rootlen-5,rootdir) + "]"
 $ endif
 $ root = rootdev + f$extract(0,f$length(rootdir)-1,rootdir) + ".]"
 $ define/process/nolog/translation=concealed XMMS_ROOT 'root'
@@ -57,6 +62,9 @@ $ else
 $   mcr 'image' "''p1'"
 $ endif
 $ exit $status
+$ bad_source_location:
+$ write sys$error "Keep RUN.COM in the source VMS directory, or install it beside XMMS.EXE."
+$ exit %x0000002c
 $ missing:
 $ write sys$error "XMMS, GTK or OPL runtime not found. Check installation or RUN arguments."
 $ exit %x0000002c
