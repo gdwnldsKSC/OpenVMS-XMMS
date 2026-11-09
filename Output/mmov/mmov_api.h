@@ -14,6 +14,9 @@
 #ifdef __VMS
 #pragma names save
 #pragma names uppercase
+/* Avoid adding the legacy SDK directory to all system-header searches.
+ * MMBASIC.H skips its unqualified platform.h include once this is loaded. */
+#include <mme/platform.h>
 #endif
 #include <mme/mme_api.h>
 #ifdef __VMS

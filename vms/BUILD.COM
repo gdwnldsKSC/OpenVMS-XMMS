@@ -21,6 +21,9 @@ $ rootdir = f$extract(0,dir_length-5,procedure_dir) + "]"
 $ source_default = rootdev + rootdir
 $ root = rootdev + f$extract(0,f$length(rootdir)-1,rootdir) + ".]"
 $ define/nolog/translation=concealed XMMS_ROOT 'root'
+$ define/nolog XMMS XMMS_ROOT:[XMMS]
+$ define/nolog LIBXMMS XMMS_ROOT:[LIBXMMS]
+$ define/nolog DEFSKIN XMMS_ROOT:[XMMS.DEFSKIN]
 $ if p1 .eqs. "" then p1 = "DKA100:[GTK1210]"
 $ if p2 .eqs. "" then p2 = "DKA100:[OPL]"
 $ if p3 .eqs. "" then p3 = "SYS$SHARE:VMS_JACKETS.EXE"
@@ -28,6 +31,8 @@ $ gd = f$parse(p1,,,"DEVICE")
 $ gr = f$parse(p1,,,"DIRECTORY")
 $ gr = gd + f$extract(0,f$length(gr)-1,gr) + ".]"
 $ define/nolog/translation=concealed GROOT 'gr'
+$ define/nolog GDK GROOT:[GTK.GDK]
+$ define/nolog GTK GROOT:[GTK.GTK]
 $ define/nolog VJID 'p2'
 $ define/nolog VMS_JACKETS 'p3'
 $ define/nolog LIBGLIB GROOT:[GLIB]LIBGLIB.EXE
@@ -48,7 +53,7 @@ $ if f$search("[.VMS_BUILD]MPG.DIR") .eqs. "" then create/directory [.VMS_BUILD.
 $ copy [.VMS]CONFIG.H []CONFIG.H
 $ copy [.XMMS]I18N^.H.IN [.XMMS]I18N.H
 $ defs = "HAVE_CONFIG_H,XMMS_STATIC_PLUGINS,VMS_AS_IS,GENERIC_MOTIF_REDEFINES,GENERIC_PTHREAD_REDEFINES"
-$ includes = source_default + ",XMMS_ROOT:[XMMS],GROOT:[GTK],GROOT:[GLIB],GROOT:[GLIB.GMODULE],VJID:,MMOV$INCLUDE:"
+$ includes = source_default + ",XMMS_ROOT:[XMMS],GROOT:[GTK],GROOT:[GLIB],GROOT:[GLIB.GMODULE],VJID:"
 $ ccflags = "/NAMES=(AS_IS,SHORTEN)/POINTER_SIZE=32/FLOAT=IEEE/IEEE=DENORM/REENTRANCY=MULTITHREAD/STANDARD=RELAXED_ANSI89/PREFIX=ALL/MAIN=POSIX_EXIT"
 $ open/write options [.VMS_BUILD]XMMS.OPT
 $ write options "CASE_SENSITIVE=YES"
