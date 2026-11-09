@@ -1177,7 +1177,11 @@ InputPlugin mpg123_ip =
 	NULL
 };
 
+#ifdef XMMS_STATIC_PLUGINS
+InputPlugin *get_mpg123_iplugin_info(void)
+#else
 InputPlugin *get_iplugin_info(void)
+#endif
 {
 	mpg123_ip.description =
 		g_strdup_printf(_("MPEG Layer 1/2/3 Player %s"), VERSION);

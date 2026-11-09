@@ -18,6 +18,8 @@
 #ifndef XMMS_H
 #define XMMS_H
 
+#include "config.h"
+
 #include <gtk/gtk.h>
 #include <gdk/gdkx.h>
 #include <gdk/gdkkeysyms.h>
@@ -27,7 +29,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
+#ifndef XMMS_NO_REMOTE_CONTROL
 #include <sys/un.h>
+#endif
 #include <unistd.h>
 #include <dirent.h>
 #include <errno.h>
@@ -82,6 +86,5 @@
 #include "dnd.h"
 #include "urldecode.h"
 
-#include "config.h"
 
 #endif

@@ -899,7 +899,9 @@ void mainwin_quit_cb(void)
 	gtk_timeout_remove(mainwin_timeout_tag);
 	util_set_cursor(NULL);
 	save_config();
+#ifndef XMMS_NO_REMOTE_CONTROL
 	cleanup_ctrlsocket();
+#endif
 	playlist_stop_get_info_thread();
 	playlist_clear();
 	cleanup_plugins();
@@ -3702,7 +3704,9 @@ gint idle_func(gpointer data)
 
 
 	GDK_THREADS_ENTER();
+#ifndef XMMS_NO_REMOTE_CONTROL
 	check_ctrlsocket();
+#endif
 
 	draw_main_window(mainwin_force_redraw);
 	if(!count)
@@ -3907,7 +3911,11 @@ void parse_cmd_line(int argc, char **argv, struct cmdlineopt *opt)
 	}
 	for (i = optind; i < argc; i++)
 	{
-		if (argv[i][0] == '/' || strstr(argv[i], "://"))
+		if (argv[i][0] == '/' || strstr(argv[i], "://")
+#ifdef __VMS
+		    || strchr(argv[i], ':') || strchr(argv[i], '[')
+#endif
+		   )
 			filename = g_strdup(argv[i]);
 		else
 		{
@@ -3920,6 +3928,71 @@ void parse_cmd_line(int argc, char **argv, struct cmdlineopt *opt)
 	opt->filenames = g_list_reverse(opt->filenames);
 }
 
+#ifdef XMMS_NO_REMOTE_CONTROL
+/* The native port uses local actions for startup arguments. No Unix-domain
+ * listener is installed, and requests for another session are rejected. */
+static gboolean cmdline_toggle(const char *value, gboolean current)
+{
+	if (!value) return !current;
+	if (!g_strcasecmp(value, "on")) return TRUE;
+	if (!g_strcasecmp(value, "off")) return FALSE;
+	fprintf(stderr, "Value '%s' must be 'on' or 'off'.\n", value);
+	return current;
+}
+
+void handle_cmd_line_options(struct cmdlineopt *opt, gboolean remote)
+{
+	GList *node;
+	int pos, i;
+	if (remote || opt->session != -1 || opt->quit)
+	{
+		fprintf(stderr, "This build does not support remote session commands.\n");
+		exit(1);
+	}
+	GDK_THREADS_ENTER();
+	if (opt->filenames)
+	{
+		if (!opt->enqueue && !opt->queue) playlist_clear();
+		pos = get_playlist_length();
+		for (node = opt->filenames; node; node = node->next)
+		{
+			playlist_add(node->data);
+			g_free(node->data);
+		}
+		g_list_free(opt->filenames);
+		opt->filenames = NULL;
+		if (opt->queue && !opt->play)
+			for (i = pos; i < get_playlist_length(); i++) playlist_queue_position(i);
+		if (opt->enqueue && opt->play && get_playlist_length() > pos)
+			playlist_set_position(pos);
+		if (!opt->enqueue && !opt->queue) playlist_play();
+	}
+	if (opt->rew) playlist_prev();
+	if (opt->play) mainwin_play_pushed();
+	if (opt->pause) input_pause();
+	if (opt->stop) mainwin_stop_pushed();
+	if (opt->fwd) playlist_next();
+	if (opt->play_pause)
+	{
+		if (get_input_playing()) input_pause();
+		else playlist_play();
+	}
+	if (opt->toggle_shuffle)
+	{
+		mainwin_shuffle_pushed(cmdline_toggle(opt->shuffle, cfg.shuffle));
+		tbutton_set_toggled(mainwin_shuffle, cfg.shuffle);
+	}
+	if (opt->toggle_repeat)
+	{
+		mainwin_repeat_pushed(cmdline_toggle(opt->repeat, cfg.repeat));
+		tbutton_set_toggled(mainwin_repeat, cfg.repeat);
+	}
+	if (opt->toggle_advance)
+		mainwin_advance_pushed(!cmdline_toggle(opt->advance, !cfg.no_playlist_advance));
+	if (opt->mainwin) mainwin_show(TRUE);
+	GDK_THREADS_LEAVE();
+}
+#else
 void handle_cmd_line_options(struct cmdlineopt *opt, gboolean remote)
 {
 	int i;
@@ -4051,6 +4124,8 @@ void handle_cmd_line_options(struct cmdlineopt *opt, gboolean remote)
 	if (opt->quit)
 		xmms_remote_quit(opt->session);
 }
+
+#endif /* XMMS_NO_REMOTE_CONTROL */
 
 void segfault_handler(int sig)
 {
@@ -4198,6 +4273,13 @@ int main(int argc, char **argv)
 		g_error(_("GLib does not support threads."));
 
 	parse_cmd_line(argc, argv, &options);
+#ifdef XMMS_NO_REMOTE_CONTROL
+	if (options.session != -1 || options.quit)
+	{
+		fprintf(stderr, "This build does not support remote session commands.\n");
+		return 1;
+	}
+#endif
 
 #ifdef HAVE_SRANDOMDEV
 	srandomdev();
@@ -4230,18 +4312,25 @@ int main(int argc, char **argv)
 
 	if (!gtk_init_check(&argc, &argv))
 	{
+#ifdef XMMS_NO_REMOTE_CONTROL
+		fprintf(stderr, "Unable to open display; start XMMS from a DECwindows session.\n");
+		return 1;
+#else
 		if (argc < 2)
 			g_log(NULL, G_LOG_LEVEL_CRITICAL, "Unable to open display");
 		handle_cmd_line_options(&options, TRUE);
 		exit(0);
+#endif
 	}
 
 	make_xmms_dir();
+#ifndef XMMS_NO_REMOTE_CONTROL
 	if (options.session != -1 || !setup_ctrlsocket())
 	{
 		handle_cmd_line_options(&options, TRUE);
 		exit(0);
 	}
+#endif
 
 	if (options.quit)
 		return 0;
@@ -4290,7 +4379,9 @@ int main(int argc, char **argv)
 	g_free(filename);
 	playlist_set_position(cfg.playlist_position);
 	GDK_THREADS_LEAVE();
+#ifndef XMMS_NO_REMOTE_CONTROL
 	start_ctrlsocket();
+#endif
 	handle_cmd_line_options(&options, FALSE); 
 	GDK_THREADS_ENTER();
 	mainwin_set_info_text();

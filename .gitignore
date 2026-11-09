@@ -1,0 +1,18 @@
+# Native and autotools build products
+*.obj
+*.exe
+*.olb
+*.lis
+*.map
+*.dmp
+*.o
+*.lo
+*.la
+.deps/
+.libs/
+config.log
+config.status
+config.cache
+stamp-h1
+Makefile
+build/

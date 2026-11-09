@@ -50,7 +50,11 @@ static InputPlugin wav_ip;
 #define WAVDEBUGf
 #define WAVDEBUG(f, a...) printf(f, ##a)
 #else
+#ifdef __VMS
+#define WAVDEBUG(...)
+#else
 #define WAVDEBUG(f, a...)
+#endif
 #endif
 
 #define	WAVE_FORMAT_PCM        0x0001
@@ -77,7 +81,11 @@ static struct wave_file *wav_file = NULL;
 static pthread_t decode_thread;
 static gboolean audio_error = FALSE;
 
+#ifdef XMMS_STATIC_PLUGINS
+InputPlugin *get_wav_iplugin_info(void)
+#else
 InputPlugin *get_iplugin_info(void)
+#endif
 {
 	wav_ip.description = g_strdup_printf(_("Wave Player %s"), VERSION);
 	return &wav_ip;

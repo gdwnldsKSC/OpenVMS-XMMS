@@ -367,18 +367,39 @@ void playlist_ins(char * filename, long pos)
 static guint devino_hash(gconstpointer key)
 {
 	const struct devino *d = key;
+#ifdef __VMS
+	const unsigned char *fid = (const unsigned char *)&d->ino;
+	guint hash = g_str_hash(d->dev);
+	size_t i;
+	for (i = 0; i < sizeof(d->ino); i++) hash = hash * 33U + fid[i];
+	return hash;
+#else
 	return d->ino;
+#endif
 }
 
 static int devino_compare(gconstpointer a, gconstpointer b)
 {
 	const struct devino *da = a, *db = b;
+#ifdef __VMS
+	return !strcmp(da->dev, db->dev) &&
+	       !memcmp(&da->ino, &db->ino, sizeof(da->ino));
+#else
 	return da->dev == db->dev && da->ino == db->ino;
+#endif
+}
+
+static void devino_free(struct devino *key)
+{
+#ifdef __VMS
+	g_free(key->dev);
+#endif
+	g_free(key);
 }
 
 static gboolean devino_destroy(gpointer key, gpointer value, gpointer data)
 {
-	g_free(key);
+	devino_free(key);
 	return TRUE;
 }
 
@@ -398,12 +419,19 @@ static GList* playlist_dir_find_files(char *path, gboolean background, GHashTabl
 		return NULL;
 
 	devino = g_malloc(sizeof (*devino));
+#ifdef __VMS
+	/* st_dev points to a device name and st_ino contains the three-word FID.
+	 * Own the name: the next stat call can reuse its storage. */
+	devino->dev = g_strdup(statbuf.st_dev);
+	memcpy(&devino->ino, &statbuf.st_ino, sizeof(devino->ino));
+#else
 	devino->dev = statbuf.st_dev;
 	devino->ino = statbuf.st_ino;
+#endif
 
 	if (g_hash_table_lookup(htab, devino))
 	{
-		g_free(devino);
+		devino_free(devino);
 		return NULL;
 	}
 

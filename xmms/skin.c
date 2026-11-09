@@ -596,6 +596,12 @@ static char * escape_shell_chars(const char *string)
 
 static char * skin_decompress_skin(const char* path)
 {
+#ifdef __VMS
+	/* The Unix extractor invokes a shell pipeline. VMS users can select an
+	 * unpacked skin directory; the embedded skin needs no external tools. */
+	g_message("Extract this skin to a directory before selecting it on OpenVMS.");
+	return NULL;
+#else
 	char *tmp = NULL, *tempdir, *unzip, *tar, *ending, *escaped;
 
 	unzip = getenv("UNZIPCMD");
@@ -631,6 +637,7 @@ static char * skin_decompress_skin(const char* path)
 	g_free(escaped);
 	g_free(tmp);
 	return tempdir;
+#endif /* __VMS */
 }
 	
 

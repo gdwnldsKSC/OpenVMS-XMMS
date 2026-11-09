@@ -19,6 +19,7 @@
  */
 #include "xmms.h"
 
+#if !defined(XMMS_STATIC_PLUGINS)
 #ifdef HPUX
 # include <dl.h>
 #else
@@ -34,7 +35,7 @@
 #ifndef RTLD_NOW
 # define RTLD_NOW 0
 #endif
-
+#endif /* !XMMS_STATIC_PLUGINS */
 
 char *plugin_dir_list[] =
 {
@@ -48,8 +49,37 @@ extern struct EffectPluginData *ep_data;
 extern struct GeneralPluginData *gp_data;
 extern struct VisPluginData *vp_data;
 
+#ifdef XMMS_STATIC_PLUGINS
+/* Native images link the supported plugins directly. This avoids a second
+ * plugin ABI based on Unix shared objects and keeps the upstream callbacks. */
+extern InputPlugin *get_wav_iplugin_info(void);
+extern InputPlugin *get_mpg123_iplugin_info(void);
+extern OutputPlugin *get_mmov_op(void);
+
+static void register_builtin_input(InputPlugin *plugin, const char *name)
+{
+	plugin->handle = NULL;
+	plugin->filename = g_strdup(name);
+	plugin->get_vis_type = input_get_vis_type;
+	plugin->add_vis_pcm = input_add_vis_pcm;
+	plugin->set_info = playlist_set_info;
+	plugin->set_info_text = input_set_info_text;
+	ip_data->input_list = g_list_prepend(ip_data->input_list, plugin);
+}
+
+static void register_builtin_plugins(void)
+{
+	OutputPlugin *output = get_mmov_op();
+	register_builtin_input(get_wav_iplugin_info(), "builtin:wave");
+	register_builtin_input(get_mpg123_iplugin_info(), "builtin:mpg123");
+	output->handle = NULL;
+	output->filename = g_strdup("builtin:mmov");
+	op_data->output_list = g_list_prepend(op_data->output_list, output);
+}
+#else
 void scan_plugins(char *dirname);
 void add_plugin(char * filename);
+#endif
 
 static int d_iplist_compare(const void *a, const void *b)
 {
@@ -113,6 +143,9 @@ void init_plugins(void)
 	vp_data = g_malloc0(sizeof (struct VisPluginData));
 
 
+#ifdef XMMS_STATIC_PLUGINS
+	register_builtin_plugins();
+#else
 #ifndef DISABLE_USER_PLUGIN_DIR
 	dir = g_strconcat(g_get_home_dir(), "/.xmms/Plugins", NULL);
 	scan_plugins(dir);
@@ -145,6 +178,8 @@ void init_plugins(void)
 		scan_plugins(dir);
 		g_free(dir);
 	}
+
+#endif /* XMMS_STATIC_PLUGINS */
 
 	op_data->output_list = g_list_sort(op_data->output_list, outputlist_compare_func);
 	if (!op_data->current_output_plugin && g_list_length(op_data->output_list))
@@ -214,6 +249,13 @@ void init_plugins(void)
 
 }
 
+#ifdef XMMS_STATIC_PLUGINS
+static void close_dynamic_lib(void *handle)
+{
+	/* Builtins have no loader handle or separately owned image. */
+	(void)handle;
+}
+#else
 static void* open_dynamic_lib(char *filename)
 {
 #ifdef HPUX
@@ -387,6 +429,8 @@ void scan_plugins(char *dirname)
 	}
 	closedir(dir);
 }
+
+#endif /* XMMS_STATIC_PLUGINS */
 
 void cleanup_plugins(void)
 {
