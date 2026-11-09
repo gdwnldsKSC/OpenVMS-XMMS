@@ -13,6 +13,7 @@ $ procedure = f$environment("PROCEDURE")
 $ here = f$parse(procedure,,,"DEVICE") + f$parse(procedure,,,"DIRECTORY")
 $ rootdev = f$parse("[-]",here,,"DEVICE")
 $ rootdir = f$parse("[-]",here,,"DIRECTORY")
+$ source_default = rootdev + rootdir
 $ root = rootdev + f$extract(0,f$length(rootdir)-1,rootdir) + ".]"
 $ define/nolog/translation=concealed XMMS_ROOT 'root'
 $ if p1 .eqs. "" then p1 = "DKA100:[GTK1210]"
@@ -34,7 +35,7 @@ $ if f$search("VMS_JACKETS") .eqs. "" then goto missing
 $ if f$search("LIBGTK") .eqs. "" then goto missing
 $ if f$search("GROOT:[GLIB.GTHREAD]GTHREAD.OBJ") .eqs. "" then goto missing
 $ if f$search("SYS$LIBRARY:MMOV.OLB") .eqs. "" then goto missing
-$ set default XMMS_ROOT:[000000]
+$ set default 'source_default'
 $ if f$search("VMS_BUILD.DIR") .eqs. "" then create/directory [.VMS_BUILD]
 $ if f$search("[.VMS_BUILD]CORE.DIR") .eqs. "" then create/directory [.VMS_BUILD.CORE]
 $ if f$search("[.VMS_BUILD]LIB.DIR") .eqs. "" then create/directory [.VMS_BUILD.LIB]
@@ -42,7 +43,7 @@ $ if f$search("[.VMS_BUILD]MPG.DIR") .eqs. "" then create/directory [.VMS_BUILD.
 $ copy [.VMS]CONFIG.H []CONFIG.H
 $ copy [.XMMS]I18N^.H.IN [.XMMS]I18N.H
 $ defs = "HAVE_CONFIG_H,XMMS_STATIC_PLUGINS,VMS_AS_IS,GENERIC_MOTIF_REDEFINES,GENERIC_PTHREAD_REDEFINES"
-$ includes = "XMMS_ROOT:[000000],XMMS_ROOT:[XMMS],GROOT:[GTK],GROOT:[GLIB],GROOT:[GLIB.GMODULE],VJID:,MMOV$INCLUDE:"
+$ includes = source_default + ",XMMS_ROOT:[XMMS],GROOT:[GTK],GROOT:[GLIB],GROOT:[GLIB.GMODULE],VJID:,MMOV$INCLUDE:"
 $ ccflags = "/NAMES=(AS_IS,SHORTEN)/POINTER_SIZE=32/FLOAT=IEEE/IEEE=DENORM/REENTRANCY=MULTITHREAD/STANDARD=RELAXED_ANSI89/PREFIX=ALL/MAIN=POSIX_EXIT"
 $ open/write options [.VMS_BUILD]XMMS.OPT
 $ write options "CASE_SENSITIVE=YES"
@@ -133,6 +134,7 @@ $ write options "SYS$SHARE:PTHREAD$RTL.EXE/SHARE"
 $ write options "SYS$SHARE:DECW$XLIBSHR.EXE/SHARE"
 $ write options "SYS$SHARE:DECW$XEXTLIBSHR.EXE/SHARE"
 $ close options
+$ on warning then goto failed
 $ link/executable=[.VMS_BUILD]XMMS.EXE/map=[.VMS_BUILD]XMMS.MAP -
     /full/traceback [.VMS_BUILD]XMMS.OPT/options
 $ write sys$output "XMMS native build complete: XMMS_ROOT:[VMS_BUILD]XMMS.EXE"
@@ -144,8 +146,18 @@ $ on error then goto compile_failed
 $ source_dir = f$parse(p1,,,"DEVICE") + f$parse(p1,,,"DIRECTORY")
 $ module = f$parse(p1,,,"NAME")
 $ write sys$output "CC ''p1'"
+$ search_reset = f$search(p1,8)
+$ old_object = f$search(p2,8)
 $ cc 'ccflags' /define=('defs') /include=('source_dir','includes') -
     /object='p2' NL:'module'.C+XMMS_ROOT:[VMS]VMS_CRTL.H+VJID:VMS_JACKETS.H+'p1'
+$ cc_status = $status
+$ search_reset = f$search(p1,8)
+$ new_object = f$search(p2,8)
+$ if new_object .eqs. "" .or. new_object .eqs. old_object
+$ then
+$   write sys$error "No new object for ''p1'; CC status ",f$fao("!8XL",cc_status)
+$   exit %x0000002c
+$ endif
 $ write options p2
 $ exit 1
 $ compile_failed:
@@ -161,6 +173,7 @@ $ status = %x0000002c
 $ goto cleanup
 $ failed:
 $ status = $status
+$ if (status .and. 7) .eq. 0 then status = %x0000002c
 $ cleanup:
 $ if f$trnlnm("OPTIONS") .nes. "" then close options
 $ set default 'old_default'

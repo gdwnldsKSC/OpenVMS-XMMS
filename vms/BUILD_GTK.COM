@@ -13,6 +13,7 @@ $ if p2 .eqs. "" then p2 = "DKA100:[OPL]"
 $ if p3 .eqs. "" then p3 = "SYS$SHARE:VMS_JACKETS.EXE"
 $ gd = f$parse(p1,,,"DEVICE")
 $ gr = f$parse(p1,,,"DIRECTORY")
+$ build_root = gd + gr
 $ gr = gd + f$extract(0,f$length(gr)-1,gr) + ".]"
 $ define/nolog/translation=concealed GROOT 'gr'
 $ define/nolog GROOTU "/GROOT"
@@ -22,7 +23,7 @@ $ define/nolog VMS_JACKETS 'p3'
 $ if f$search("GROOT:[GLIB]VMS_BUILD.COM") .eqs. "" then goto missing
 $ if f$search("VJID:VMS_JACKETS.H") .eqs. "" then goto missing
 $ if f$search("VMS_JACKETS") .eqs. "" then goto missing
-$ set default GROOT:[000000]
+$ set default 'build_root'
 $ open/write setup VMS_BUILD_SETUP.COM
 $ write setup "$! Configured by XMMS BUILD_GTK.COM; original source license unchanged."
 $ write setup "$ vms_cc == ""@GROOT:[000000]VMS_CC.COM"""
