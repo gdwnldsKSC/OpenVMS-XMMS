@@ -16,6 +16,9 @@ $ gr = f$parse(p1,,,"DIRECTORY")
 $ build_root = gd + gr
 $ gr = gd + f$extract(0,f$length(gr)-1,gr) + ".]"
 $ define/nolog/translation=concealed GROOT 'gr'
+$! Slash-prefixed include names map to device logicals in VSI C.
+$ define/process/nolog GDK GROOT:[GTK.GDK]
+$ define/process/nolog GTK GROOT:[GTK.GTK]
 $ define/nolog GROOTU "/GROOT"
 $ define/nolog VJID 'p2'
 $ define/nolog VJIDU "/VJID"
