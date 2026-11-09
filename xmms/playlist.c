@@ -1171,7 +1171,11 @@ static void playlist_load_ins_file(char *filename, char *playlist_name,
 		      *temp = '/';
 	}
 
-	if (filename[0] != '/' && !strstr(filename, "://"))
+	if (filename[0] != '/' && !strstr(filename, "://")
+#ifdef __VMS
+	    && !strchr(filename, ':') && !strchr(filename, '[')
+#endif
+	   )
 	{
 		path = g_strdup(playlist_name);
 		temp = strrchr(path, '/');

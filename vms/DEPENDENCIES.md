@@ -94,3 +94,9 @@ $ @[.VMS]RUN "SYS$LOGIN:SONG.WAV" DKA100:[GTK1210] DKA100:[OPL]VMS_JACKETS.EXE
 `RUN.COM` defines only process-local library locations and invokes XMMS.
 It does not create a display, start a desktop session, modify login files,
 or install system-wide logical names. MMOV must already be running.
+
+The runtime PCSI kit installs `SYS$COMMON:[XMMS]XMMS.COM`, `XMMS.EXE`, and
+private libraries under `[XMMS.LIB]`. After installation, launch with
+`@SYS$COMMON:[XMMS]XMMS` (optionally followed by a quoted audio filename).
+The same launcher detects this layout and needs no build-tree paths, compiler
+or MMOV SDK. The corresponding-source archive accompanies the runtime kit.
