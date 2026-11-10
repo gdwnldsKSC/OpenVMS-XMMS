@@ -4,8 +4,29 @@ $! Installed as [XMMS]XMMS.COM beside XMMS.EXE and [.LIB] runtime libraries.
 $! Also works as [source.VMS]RUN.COM with [source.VMS_BUILD]XMMS.EXE.
 $! All logical names are process-local. The existing display is unchanged.
 $ on error then goto failed
-$ procedure = f$environment("PROCEDURE")
-$ here = f$parse(procedure,,,"DEVICE") + f$parse(procedure,,,"DIRECTORY")
+$! Expand concealed roots, then collapse RMS split directory boundaries before
+$! defining our own root. A root's [000000] names that root, not a child directory.
+$ procedure = f$parse(f$environment("PROCEDURE"),,,,"NO_CONCEAL")
+$ here_device = f$parse(procedure,,,"DEVICE")
+$ here_directory = f$parse(procedure,,,"DIRECTORY")
+$ normalize_root:
+$ boundary = f$locate(".][",here_directory)
+$ if boundary .eq. f$length(here_directory) then goto root_normalized
+$ root_prefix = f$extract(0,boundary,here_directory)
+$ root_suffix = f$extract(boundary+3,f$length(here_directory),here_directory)
+$ root_separator = "."
+$ if f$extract(0,7,root_suffix) .eqs. "000000]"
+$ then
+$   root_suffix = f$extract(6,f$length(root_suffix),root_suffix)
+$   root_separator = ""
+$ else
+$   if f$extract(0,7,root_suffix) .eqs. "000000." then -
+        root_suffix = f$extract(7,f$length(root_suffix),root_suffix)
+$ endif
+$ here_directory = root_prefix + root_separator + root_suffix
+$ goto normalize_root
+$ root_normalized:
+$ here = here_device + here_directory
 $ installed = f$search(here + "XMMS.EXE") .nes. ""
 $ if installed
 $ then
