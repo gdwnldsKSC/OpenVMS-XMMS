@@ -4340,6 +4340,15 @@ int main(int argc, char **argv)
 	if (options.quit)
 		return 0;
 	
+#ifdef __VMS
+	/* Share the 8-bit DECwindows palette; a private map recolors the desktop. */
+	if (gdk_visual_get_system()->type == GDK_VISUAL_PSEUDO_COLOR &&
+	    gdk_visual_get_system()->depth == 8)
+	{
+		gdk_rgb_set_install(FALSE);
+		gdk_rgb_set_min_colors(0);
+	}
+#endif
 	gdk_rgb_init();
 	gtk_widget_set_default_colormap(gdk_rgb_get_cmap());
 	gtk_widget_set_default_visual(gdk_rgb_get_visual());

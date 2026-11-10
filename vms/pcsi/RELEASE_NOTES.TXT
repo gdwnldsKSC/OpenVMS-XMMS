@@ -1,6 +1,11 @@
-XMMS 1.2.11 for OpenVMS Alpha - PCSI V1.2-11
+XMMS 1.2.11 for OpenVMS Alpha - PCSI V1.2-11R1
 
 Target: VSI OpenVMS Alpha V8.4-2L2, DECwindows Motif V1.7, MMOV V2.2.
+R1 is a maintenance revision of XMMS 1.2.11 for shared-color 8-bit desktops.
+It addresses the private-colormap switching that could make other desktop
+windows change colors while XMMS had focus. Shared palette exhaustion may
+require approximating skin colors; the desktop colormap must remain shared.
+
 This port builds the classic GTK 1.2 desktop interface with local WAV and
 MP3 decoding and native MMOV waveform output. It uses 32-bit pointers and
 IEEE floating point. The toolkit runtimes are private to this installation.
@@ -34,11 +39,18 @@ PRODUCT INSTALL runs a version/loader check, which requires no display.
 This check does not establish audio-device availability or desktop playback.
 The normal desktop is used for functional playback verification.
 
+Upgrade from V1.2-11:
+  PRODUCT INSTALL XMMS /PRODUCER=XMMS /BASE_SYSTEM=AXPVMS -
+    /VERSION=V1.2-11R1 /SOURCE=device:[kit_directory]
+Close XMMS first. Use the ordinary PCSI upgrade and retain the previous kit
+and its matching source companion separately. No MMOV upgrade is required.
+
 Removal:
   PRODUCT REMOVE XMMS /PRODUCER=XMMS /BASE_SYSTEM=AXPVMS
 Close XMMS first. PCSI removes its managed runtime files and directories.
 User preferences and playlists under the user's home directory are retained.
-The separate MMOV and DECwindows installations remain managed independently.
+If PCSI offers to remove dependencies, answer NO. The separate MMOV
+and DECwindows installations remain managed independently.
 
-Keep XMMS-SOURCE-V1_2_11.ZIP with the binary kit. See LICENSES.TXT and
+Keep XMMS-SOURCE-V1_2_11R1.ZIP with the binary kit. See LICENSES.TXT and
 SOURCE_INFO.TXT for component notices and corresponding-source information.

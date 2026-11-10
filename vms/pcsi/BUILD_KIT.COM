@@ -71,7 +71,7 @@ $ create/directory XMMS_KIT:[MATERIAL.XMMS.LICENSES]
 $ create/directory XMMS_KIT:[OUTPUT]
 $ create/directory XMMS_KIT:[VERIFY]
 $ open/write manifest XMMS_KIT:[MATERIAL.XMMS]MANIFEST.TXT
-$ write manifest "XMMS V1.2-11 runtime material; native COPY checksums and RMS attributes"
+$ write manifest "XMMS V1.2-11R1 runtime material; native COPY checksums and RMS attributes"
 $ write manifest "Built " + f$time()
 $ call copy_checked "''app_image'" "XMMS_KIT:[MATERIAL.XMMS]XMMS.EXE"
 $ call copy_checked "''vms_dir'RUN.COM" "XMMS_KIT:[MATERIAL.XMMS]XMMS.COM"
@@ -89,22 +89,22 @@ $ call copy_checked "XMMS_GTK:[GLIB]COPYING." "XMMS_KIT:[MATERIAL.XMMS.LICENSES]
 $ call copy_checked "XMMS_GTK:[000000]LICENSE.TXT" "XMMS_KIT:[MATERIAL.XMMS.LICENSES]GTK_PORT_LICENSE.TXT"
 $ call copy_checked "XMMS_OPL:LICENSE.TXT" "XMMS_KIT:[MATERIAL.XMMS.LICENSES]OPL_LICENSE.TXT"
 $ call copy_checked "XMMS_OPL:GNU_PUBLIC_LICENSE.TXT" "XMMS_KIT:[MATERIAL.XMMS.LICENSES]OPL_GPL.TXT"
-$ call copy_checked "''p4'" "XMMS_KIT:[OUTPUT]XMMS-SOURCE-V1_2_11.ZIP"
-$ checksum/file/algorithm=md5 XMMS_KIT:[OUTPUT]XMMS-SOURCE-V1_2_11.ZIP
+$ call copy_checked "''p4'" "XMMS_KIT:[OUTPUT]XMMS-SOURCE-V1_2_11R1.ZIP"
+$ checksum/file/algorithm=md5 XMMS_KIT:[OUTPUT]XMMS-SOURCE-V1_2_11R1.ZIP
 $ source_md5 = checksum$checksum
 $ open/write source_info XMMS_KIT:[MATERIAL.XMMS]SOURCE_INFO.TXT
-$ write source_info "Corresponding-source companion: XMMS-SOURCE-V1_2_11.ZIP"
+$ write source_info "Corresponding-source companion: XMMS-SOURCE-V1_2_11R1.ZIP"
 $ write source_info "MD5: " + source_md5
-$ write source_info "Distribute this exact companion with XMMS-AXPVMS-XMMS-V0102-11-1.PCSI."
+$ write source_info "Distribute this exact companion with XMMS-AXPVMS-XMMS-V0102-11R1-1.PCSI."
 $ write source_info "It contains the exact XMMS/GTK/GLib build sources and OPL source/notices."
 $ write source_info "OpenVMS, DECwindows and MMOV development files are external dependencies."
 $ close source_info
 $ close manifest
-$ product package XMMS /producer=XMMS /base_system=AXPVMS /version=V1.2-11 -
+$ product package XMMS /producer=XMMS /base_system=AXPVMS /version=V1.2-11R1 -
     /source='here'XMMS.PCSI$DESC /material='material_root' -
     /destination=XMMS_KIT:[OUTPUT] /format=sequential /log
 $! Independently reconstruct the material tree through PCSI, then compare it.
-$ product copy XMMS /producer=XMMS /base_system=AXPVMS /version=V1.2-11 -
+$ product copy XMMS /producer=XMMS /base_system=AXPVMS /version=V1.2-11R1 -
     /source=XMMS_KIT:[OUTPUT] /destination=XMMS_KIT:[VERIFY] -
     /format=reference /options=noconfirm /log
 $ search_context = 717

@@ -1,0 +1,58 @@
+--- a/gtk/gdk/gdkrgb.c
++++ b/gtk/gdk/gdkrgb.c
+@@ -216,7 +216,7 @@
+ /* Try installing a color cube of the specified size.
+    Make the colorcube and return TRUE on success */
+ static gint
+-gdk_rgb_try_colormap (gint nr, gint ng, gint nb)
++gdk_rgb_try_colormap (gint nr, gint ng, gint nb, gboolean best_match)
+ {
+   gint r, g, b;
+   gint ri, gi, bi;
+@@ -279,7 +279,9 @@
+     }
+ #endif
+ 
+-  if (colors_needed)
++  /* Nearest-color fallback needs no new writable cells: gdk_color_alloc
++   * below obtains read-only colors or references to existing best matches. */
++  if (colors_needed && !best_match)
+     {
+       if (!gdk_colors_alloc (cmap, 0, NULL, 0, junk, colors_needed))
+ 	{
+@@ -355,7 +357,7 @@
+   gint i;
+ 
+   for (i = 0; i < n_sizes; i++)
+-    if (gdk_rgb_try_colormap (sizes[i][0], sizes[i][1], sizes[i][2]))
++    if (gdk_rgb_try_colormap (sizes[i][0], sizes[i][1], sizes[i][2], FALSE))
+       return TRUE;
+   return FALSE;
+ }
+@@ -661,9 +663,23 @@
+ 	    }
+ 	  if (!gdk_rgb_do_colormaps ())
+ 	    {
+-	      image_info->cmap = gdk_colormap_new (image_info->visual, FALSE);
+-	      image_info->cmap_alloced = TRUE;
+-	      gdk_rgb_do_colormaps ();
++#ifdef __VMS
++	      /* Honor XMMS's shared-map policy even when the desktop has no
++	       * free color cube. Keep the RGB lookup table and window map paired. */
++	      if (!gdk_rgb_install_cmap && !image_info->cmap_alloced &&
++		  gdk_rgb_min_colors == 0 && image_info->visual->depth == 8 &&
++		  image_info->visual == gdk_visual_get_system ())
++		{
++		  if (!gdk_rgb_try_colormap (6, 6, 6, TRUE))
++		    g_error ("GdkRGB could not allocate shared DECwindows colors");
++		}
++	      else
++#endif
++		{
++		  image_info->cmap = gdk_colormap_new (image_info->visual, FALSE);
++		  image_info->cmap_alloced = TRUE;
++		  gdk_rgb_do_colormaps ();
++		}
+ 	    }
+ 	  if (gdk_rgb_verbose)
+ 	    g_print ("color cube: %d x %d x %d\n",

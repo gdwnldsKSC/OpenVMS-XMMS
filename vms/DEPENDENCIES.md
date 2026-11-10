@@ -30,7 +30,7 @@ notices. The SHA-256 values below describe the downloaded bytes.
 | [Published GTK A1 portability patch](https://www.digiater.nl/openvms/decus/vmslt03a/vu/gtk1210-a1_patch.tar) | `a51b249b10556a81f8da67d0ac25f073f561b713f82b41a21b201000a9add6dc` |
 
 The GTK archive includes its matching GLib sources and native build files.
-Apply the [VMS file-picker and system-header patches](patches/README.md) to the original
+Apply the [VMS file-picker, system-header and shared-colormap patches](patches/README.md) to the original
 GTK download before transfer. The kit's corresponding-source archive already
 contains the patched GTK tree.
 The OPL PCSI kit contains the runtime; the separate source archive supplies
@@ -128,6 +128,18 @@ report a missing `/.xmms/config` even when the jacketed stream opens the saved
 `_XMMS` configuration. Reading the stream also avoids assuming that an RMS
 physical byte count equals translated text length. Other platforms retain
 the original reader.
+
+On an 8-bit system PseudoColor display, XMMS requests shared GdkRGB colors
+before RGB initialization. The matching GTK dependency patch is required:
+`gdk_rgb_set_min_colors(0)` alone still permits a private colormap when shared
+space is exhausted. The patch retains normal shared-cube allocation, then
+uses read-only nearest-color matches for a 6-by-6-by-6 cube. It fails clearly
+if no shared colors are available, instead of switching the desktop palette.
+The GdkRGB visual, pixel lookup and widget colormap remain paired; non-VMS
+and other visual policies are unchanged. See the [patch instructions](patches/README.md)
+for exact source hashes and the release validation report for native palette
+checks. A window capture decoded with its own map does not by itself prove
+that the desktop's installed palette stayed unchanged.
 
 Launch from a normal DECwindows DECterm with its existing display:
 

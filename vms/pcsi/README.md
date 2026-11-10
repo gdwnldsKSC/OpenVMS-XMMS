@@ -1,6 +1,9 @@
 # XMMS runtime PCSI kit
 
-This packages the already-built native player as `XMMS AXPVMS XMMS V1.2-11`.
+This packages the already-built native player as `XMMS AXPVMS XMMS V1.2-11R1`.
+R1 is a maintenance revision of the same XMMS 1.2.11 upstream release. It
+addresses private-colormap switching on 8-bit DECwindows desktops. Preserve
+the prior V1.2-11 artifacts; the new kit and source companion have distinct names.
 The target is VSI OpenVMS Alpha V8.4-2L2 with DECwindows Motif V1.7 and
 MMOV V2.2. Release qualification requires native packaging, independent clean
 installation, installed-layout playback and removal checks. Record their
@@ -22,7 +25,9 @@ All installed files are PCSI-managed under `[XMMS]`, `[XMMS.LIB]` and
 `[XMMS.LICENSES]`. The runner defines process-local image logicals. The kit
 creates no accounts, system logicals, startup jobs, login changes or desktop
 customizations. PCSI handles installation, upgrade and removal of these
-files. Close XMMS before removal; personal playlists and settings are kept.
+files. Close XMMS before an upgrade or removal; personal playlists and settings
+are kept. When removal offers to remove dependencies, answer NO to retain MMOV
+and the other system products.
 
 ## Build the kit
 
@@ -88,11 +93,11 @@ Use a new work directory for another attempt. It:
    each copy's MD5, EOF and RMS record attributes.
 2. Copies the source companion into `OUTPUT` and writes source provenance.
 3. Runs `PRODUCT PACKAGE` using the original PDF/PTF and a root-form material
-   path, creating `XMMS-AXPVMS-XMMS-V0102-11-1.PCSI`.
+   path, creating `XMMS-AXPVMS-XMMS-V0102-11R1-1.PCSI`.
 4. Uses `PRODUCT COPY /FORMAT=REFERENCE` to reconstruct the kit and compares
    every staged payload with the re-extracted material.
 
-Both the `.PCSI` and `XMMS-SOURCE-V1_2_11.ZIP` are in `P1`'s `OUTPUT`
+Both the `.PCSI` and `XMMS-SOURCE-V1_2_11R1.ZIP` are in `P1`'s `OUTPUT`
 subdirectory. The source companion is distributed beside the kit; it is not
 installed on the system disk. No compiled/proprietary artifacts belong in
 this source repository.
@@ -108,7 +113,7 @@ private compatibility changes; use the release manifest to select that kit.
 
 ```text
 $ PRODUCT INSTALL XMMS /PRODUCER=XMMS /BASE_SYSTEM=AXPVMS -
-  /SOURCE=DKA100:[KITS]
+  /VERSION=V1.2-11R1 /SOURCE=DKA100:[KITS]
 $ @SYS$STARTUP:MMOV$STARTUP.COM
 ```
 
@@ -131,6 +136,11 @@ initial runtime path without opening a display or playing audio. PCSI leaves
 a product installed if its IVP fails, so an IVP error is a failed validation,
 not proof that installation rolled back.
 
+Also test PRODUCT INSTALL of R1 over the previously delivered V1.2-11 product;
+PCSI must perform the normal upgrade without first removing its dependencies.
+Verify the new product version and all 18 managed payloads, and preserve the
+previous release and matching source archive separately.
+
 Use an isolated clean base for installation, the version check with build
 logicals absent, removal and reinstallation. Remove with
 `PRODUCT REMOVE XMMS /PRODUCER=XMMS /BASE_SYSTEM=AXPVMS`; confirm that PCSI-owned
@@ -141,6 +151,14 @@ Separately test the installed layout on an ordinary DECwindows display with
 source/build logicals cleared: play WAV and MP3, and verify pause, seek, stop,
 volume and balance. Record this graphical playback result separately from the
 headless clean-system package checks.
+
+On an 8-bit PseudoColor display, record the system, XMMS-window and installed
+X colormap IDs before launch and while XMMS has focus. Confirm the desktop
+retains its colors as focus moves between XMMS and another desktop window.
+A capture decoded with each window's own palette alone cannot prove this: it
+can look correct even when the display is using a different installed map.
+Test both ordinary palette availability and exhausted shared-color space;
+record any color approximation without changing the display configuration.
 
 References: [VSI PCSI manual](https://docs.vmssoftware.com/vsi-openvms-polycenter-software-installation-utility-manual/),
 [PRODUCT command reference](https://docs.vmssoftware.com/vsi-openvms-system-management-utilities-reference-manual-volume-ii-m-z/).

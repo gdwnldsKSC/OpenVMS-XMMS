@@ -13,6 +13,12 @@ thread upcalls, as the supplied linker procedure does. Consult the release
 validation report for detailed runtime, package installation, removal and
 installed-runtime results.
 
+R1 adds a shared-colormap policy for 8-bit PseudoColor DECwindows desktops.
+It uses shared colors and approximation when necessary, keeping XMMS's RGB
+rendering and window palette consistent. Builds must include the matching
+[GTK patch](vms/patches/README.md); palette qualification results belong in
+the release validation report.
+
 The first build includes the original MP3 and WAV decoders and links them
 with the MMOV output plugin. It keeps the player, playlist, equalizer, and
 built-in visual display. It does not require a Unix shell or an autotools

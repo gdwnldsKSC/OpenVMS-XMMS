@@ -1,4 +1,4 @@
-product XMMS AXPVMS XMMS V1.2-11 full ;
+product XMMS AXPVMS XMMS V1.2-11R1 full ;
     software VSI AXPVMS VMS version minimum V8.4-2L2 ;
     software VSI AXPVMS DWMOTIF version minimum V1.7 ;
     software DEC AXPVMS MMOV version minimum V2.2 ;

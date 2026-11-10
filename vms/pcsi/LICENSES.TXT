@@ -15,7 +15,7 @@ terms. The archive's Compaq license and GNU GPL text are installed as
 [.LICENSES]OPL_LICENSE.TXT and OPL_GPL.TXT. Component notices remain in its
 source archive. No ownership or attribution notices have been removed.
 
-The companion XMMS-SOURCE-V1_2_11.ZIP contains the corresponding XMMS source,
+The companion XMMS-SOURCE-V1_2_11R1.ZIP contains the corresponding XMMS source,
 exact GTK/GLib sources and build changes, and OPL sources and notices.
 SOURCE_INFO.TXT records the checksum of the companion supplied by the
 builder. Distribute this source companion with the binary kit; source URLs
