@@ -68,7 +68,9 @@ def omit_reason(path: Path, directory: bool = False) -> str | None:
         return "private filename"
     if not directory and name in MMOV_SDK_NAMES:
         return "external MMOV SDK header"
-    if not directory and (path.suffix.casefold() in OMIT_SUFFIXES or name in OMIT_NAMES):
+    # The native GTK archive spells two compiled message catalogs *_gmo.
+    if not directory and (path.suffix.casefold() in OMIT_SUFFIXES or
+                          name.endswith("_gmo") or name in OMIT_NAMES):
         return "binary, build output, log or archive"
     if not directory and (name.endswith(("~", ".pem", ".key")) or ";" in name):
         return "backup, key or prior file version"

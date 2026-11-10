@@ -25,12 +25,16 @@
 typedef char mmov_requires_32_bit_pointers[(sizeof(void *) == 4) ? 1 : -1];
 #endif
 
-#define SLOT_COUNT 8
+#define OUTPUT_DEVICE_ID 0 /* The first native waveform output device. */
+#define SLOT_COUNT 4
 #define POLL_USEC 5000
 #define RESET_POLLS 400
 #define SLOT_FREE 0
 #define SLOT_READY 1
 #define SLOT_ACTIVE 2
+#define SLOT_PARTIAL 3
+#define POSITION_INTERVAL_MS 1000
+#define MIXER_INTERVAL_MS 1000
 
 typedef struct {
     PCMWAVEFORMAT format;
@@ -47,8 +51,7 @@ typedef struct {
 } MmovSlot;
 
 typedef struct {
-    pthread_t thread;
-    int running, initialized, failed, closing, poisoned;
+    int running, initialized, finished, failed, closing, poisoned;
     int opened, close_seen, resetting;
     int rate, channels, sample_bytes, input_frame, slot_frames;
     AFormat format;
@@ -57,7 +60,7 @@ typedef struct {
     int flush_request, flush_done, flush_time, base_time;
     unsigned int next_token;
     guint64 written_frames, submitted_frames, completed_frames, played_frames;
-    guint64 position_wrap;
+    guint64 position_wrap, next_position_poll;
     unsigned int previous_position, position_type;
     MmovShared *shared;
     MmovSlot slots[SLOT_COUNT];
@@ -66,8 +69,107 @@ typedef struct {
 static MmovState state;
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t changed = PTHREAD_COND_INITIALIZER;
-static int left_volume = 100, right_volume = 100;
+static pthread_t worker_thread;
+static int worker_started, worker_quit, shutdown_registered;
+static unsigned int mixer_request, mixer_done;
+static int mixer_busy, mixer_set, mixer_left = -1, mixer_right = -1;
+static DWORD mixer_desired, *mixer_shared;
+static MMRESULT mixer_status, mixer_reported_error;
+static guint64 mixer_cache_until;
 static void mmov_close(void);
+static void mmov_shutdown(void);
+static void *worker(void *unused);
+
+static guint64 clock_milliseconds(void)
+{
+    struct timeval now;
+    if (gettimeofday(&now, NULL))
+        return 0;
+    return (guint64)now.tv_sec * 1000 + now.tv_usec / 1000;
+}
+
+/* Preserve one MMOV API thread while idle, playing, and between tracks. */
+static int ensure_worker(void)
+{
+    int result;
+    if (worker_quit)
+        return 0;
+    if (worker_started)
+        return 1;
+    if (!shutdown_registered) {
+        if (atexit(mmov_shutdown)) {
+            fprintf(stderr, "XMMS MMOV: cannot register audio cleanup\n");
+            return 0;
+        }
+        shutdown_registered = 1;
+    }
+    result = pthread_create(&worker_thread, NULL, worker, NULL);
+    if (result) {
+        fprintf(stderr, "XMMS MMOV: pthread_create failed (%d)\n", result);
+        return 0;
+    }
+    worker_started = 1;
+    return 1;
+}
+
+/* Device volume is global in MMOV. Only a user's set_volume request writes it;
+ * startup and polling merely query it. Query before SET also initializes the
+ * legacy ENSAUDIO mixer cache before it can overwrite the first requested SET.
+ * The returned word must be in MMOV shared memory, even while no stream is open.
+ */
+static void process_mixer(void)
+{
+    MMRESULT result;
+    if (!mixer_shared)
+        mixer_shared = (DWORD *)mmeAllocMem(sizeof(*mixer_shared));
+    result = mixer_shared ? waveOutGetVolume(OUTPUT_DEVICE_ID, mixer_shared) :
+                            MMSYSERR_NOMEM;
+    if (result == MMSYSERR_NOERROR && mixer_set) {
+        result = waveOutSetVolume(OUTPUT_DEVICE_ID, mixer_desired);
+        if (result == MMSYSERR_NOERROR)
+            result = waveOutGetVolume(OUTPUT_DEVICE_ID, mixer_shared);
+    }
+    mixer_status = result;
+    if (result == MMSYSERR_NOERROR) {
+        mixer_left = (int)((*mixer_shared & 0xffffUL) * 100UL / 65535UL);
+        mixer_right = (int)(((*mixer_shared >> 16) & 0xffffUL) * 100UL / 65535UL);
+        mixer_reported_error = MMSYSERR_NOERROR;
+        mixer_cache_until = clock_milliseconds() + MIXER_INTERVAL_MS;
+    } else {
+        mixer_left = mixer_right = -1;
+        mixer_cache_until = 0;
+        if (result != mixer_reported_error)
+            fprintf(stderr, "XMMS MMOV: device volume %s failed (MMRESULT 0x%08lx)\n",
+                    mixer_set ? "change" : "query", (unsigned long)result);
+        mixer_reported_error = result;
+    }
+    mixer_done = mixer_request;
+    pthread_cond_broadcast(&changed);
+}
+
+/* Called with lock held. No MMOV call runs on the GUI or decoder thread. */
+static int request_mixer(int setting, DWORD value)
+{
+    unsigned int request;
+    int okay;
+    if (state.poisoned || !ensure_worker())
+        return 0;
+    while (mixer_busy)
+        pthread_cond_wait(&changed, &lock);
+    if (state.poisoned || worker_quit)
+        return 0;
+    mixer_busy = 1;
+    mixer_set = setting;
+    mixer_desired = value;
+    request = ++mixer_request;
+    pthread_cond_broadcast(&changed);
+    while (mixer_done != request)
+        pthread_cond_wait(&changed, &lock);
+    okay = mixer_status == MMSYSERR_NOERROR;
+    mixer_busy = 0;
+    pthread_cond_broadcast(&changed);
+    return okay;
+}
 
 static int count_slots(int kind)
 {
@@ -76,6 +178,21 @@ static int count_slots(int kind)
         if (state.slots[i].state == kind)
             ++count;
     return count;
+}
+
+/* The producer owns at most one partial slot. Seal only a full buffer or
+ * a short tail requested by the decoder's drain/backpressure protocol. */
+static void seal_partial(void)
+{
+    MmovSlot *slot = &state.slots[state.fill_slot];
+    if (slot->state != SLOT_PARTIAL || !slot->frames)
+        return;
+    if (++state.next_token == 0)
+        ++state.next_token;
+    slot->token = state.next_token;
+    slot->state = SLOT_READY;
+    state.fill_slot = (state.fill_slot + 1) % SLOT_COUNT;
+    pthread_cond_broadcast(&changed);
 }
 
 static void mmov_error(const char *operation, MMRESULT status)
@@ -106,8 +223,11 @@ static void callback(HWAVEOUT handle, UINT message, DWORD instance,
     for (i = 0; i < SLOT_COUNT; ++i) {
         MmovSlot *slot = &state.slots[i];
         if (slot->state == SLOT_ACTIVE && slot->token == header->dwUser) {
-            if (!state.resetting)
+            if (!state.resetting) {
                 state.completed_frames += slot->frames;
+                if (state.completed_frames > state.played_frames)
+                    state.played_frames = state.completed_frames;
+            }
             slot->state = SLOT_FREE;
             return;
         }
@@ -143,13 +263,16 @@ static int reset_device(void)
         state.failed = 1;
         return 0;
     }
-    for (i = 0; i < SLOT_COUNT; ++i)
+    for (i = 0; i < SLOT_COUNT; ++i) {
         state.slots[i].state = SLOT_FREE;
+        state.slots[i].frames = 0;
+    }
     state.fill_slot = state.send_slot = 0;
     state.written_frames = state.submitted_frames = 0;
     state.completed_frames = state.played_frames = 0;
     state.previous_position = state.position_type = 0;
     state.position_wrap = 0;
+    state.next_position_poll = 0;
     state.free_polls = state.force_start = 0;
     state.resetting = 0;
     return 1;
@@ -165,6 +288,7 @@ static int set_hardware_pause(int paused)
         return 0;
     }
     state.hardware_pause = paused;
+    state.next_position_poll = 0;
     return 1;
 }
 
@@ -192,7 +316,7 @@ static int open_device(void)
             return 0;
         }
     }
-    result = waveOutOpen(&state.shared->handle, WAVE_MAPPER,
+    result = waveOutOpen(&state.shared->handle, OUTPUT_DEVICE_ID,
                         (LPWAVEFORMAT)&state.shared->format,
                         (void (*)())callback, 0,
                         CALLBACK_FUNCTION | WAVE_OPEN_SHAREABLE);
@@ -308,18 +432,32 @@ static void *worker(void *unused)
     MMRESULT result;
     (void)unused;
     pthread_mutex_lock(&lock);
-    open_device();
-    state.initialized = 1;
-    pthread_cond_broadcast(&changed);
-    while (!state.closing && !state.failed) {
+    while (!worker_quit) {
+        if (mixer_request != mixer_done)
+            process_mixer();
+        if (!state.running || state.finished) {
+            pthread_cond_wait(&changed, &lock);
+            continue;
+        }
+        if (!state.initialized) {
+            open_device();
+            state.initialized = 1;
+            pthread_cond_broadcast(&changed);
+        }
+        if (state.closing || state.failed) {
+            close_device();
+            state.finished = 1;
+            pthread_cond_broadcast(&changed);
+            continue;
+        }
         pump_callbacks();
         if (state.flush_done != state.flush_request) {
             if (!reset_device())
-                break;
+                continue;
             state.base_time = state.flush_time;
             state.priming = 1;
             if (!set_hardware_pause(1))
-                break;
+                continue;
             state.flush_done = state.flush_request;
             pthread_cond_broadcast(&changed);
         }
@@ -344,17 +482,35 @@ static void *worker(void *unused)
             state.send_slot = (index + 1) % SLOT_COUNT;
         }
         if (state.failed)
-            break;
+            continue;
         if (state.priming &&
             (count_slots(SLOT_ACTIVE) >= 2 || state.force_start))
             state.priming = 0;
         i = state.desired_pause || state.priming;
         if (i != state.hardware_pause && !set_hardware_pause(i))
-            break;
-        update_position();
-        timed_wait();
+            continue;
+        if (state.submitted_frames &&
+            (!state.hardware_pause || !state.next_position_poll)) {
+            guint64 now = clock_milliseconds();
+            if (!state.next_position_poll || !now || now >= state.next_position_poll) {
+                update_position();
+                state.next_position_poll = clock_milliseconds() + POSITION_INTERVAL_MS;
+            }
+        }
+        if (!count_slots(SLOT_ACTIVE) && !count_slots(SLOT_READY))
+            pthread_cond_wait(&changed, &lock);
+        else
+            timed_wait();
     }
-    close_device();
+    if (state.running && !state.finished) {
+        close_device();
+        state.finished = 1;
+    }
+    if (mixer_shared)
+        mmeFreeMem(mixer_shared);
+    mixer_shared = NULL;
+    mixer_status = MMSYSERR_ERROR;
+    mixer_done = mixer_request;
     pthread_cond_broadcast(&changed);
     pthread_mutex_unlock(&lock);
     return NULL;
@@ -382,12 +538,10 @@ static int frame_sample(const unsigned char *p)
 
 static void convert_frames(unsigned char *out, const unsigned char *in, int frames)
 {
-    int frame, channel, sample, volume;
+    int frame, channel, sample;
     for (frame = 0; frame < frames; ++frame)
         for (channel = 0; channel < state.channels; ++channel) {
             sample = frame_sample(in);
-            volume = channel ? right_volume : left_volume;
-            sample = sample * volume / 100;
             out[0] = (unsigned char)(sample & 255);
             out[1] = (unsigned char)((unsigned int)sample >> 8);
             in += state.sample_bytes;
@@ -404,7 +558,7 @@ static int mmov_open(AFormat format, int rate, int channels)
         format < FMT_U8 || format > FMT_S16_NE)
         return 0;
     pthread_mutex_lock(&lock);
-    if (state.poisoned) {
+    if (state.poisoned || !ensure_worker()) {
         pthread_mutex_unlock(&lock);
         return 0;
     }
@@ -416,15 +570,11 @@ static int mmov_open(AFormat format, int rate, int channels)
     state.channels = channels;
     state.sample_bytes = format == FMT_U8 || format == FMT_S8 ? 1 : 2;
     state.input_frame = channels * state.sample_bytes;
-    state.slot_frames = rate / 50; /* 20 ms per slot; at most 160 ms queued. */
+    /* Native MMOV writes can take hundreds of milliseconds. Accumulate small
+     * decoder fragments into one-second buffers; four slots bound the queue. */
+    state.slot_frames = rate;
     state.running = 1;
-    result = pthread_create(&state.thread, NULL, worker, NULL);
-    if (result) {
-        state.running = 0;
-        fprintf(stderr, "XMMS MMOV: pthread_create failed (%d)\n", result);
-        pthread_mutex_unlock(&lock);
-        return 0;
-    }
+    pthread_cond_broadcast(&changed);
     while (!state.initialized)
         pthread_cond_wait(&changed, &lock);
     result = !state.failed;
@@ -456,23 +606,26 @@ static void mmov_write(void *buffer, int length)
     while (frames && !state.failed && !state.closing) {
         MmovSlot *slot;
         while (state.slots[state.fill_slot].state != SLOT_FREE &&
+               state.slots[state.fill_slot].state != SLOT_PARTIAL &&
                state.flush_request == epoch && !state.failed && !state.closing)
             pthread_cond_wait(&changed, &lock);
         if (state.failed || state.closing || state.flush_request != epoch)
             break;
         slot = &state.slots[state.fill_slot];
-        take = frames < state.slot_frames ? frames : state.slot_frames;
-        convert_frames(slot->data, input, take);
-        if (++state.next_token == 0)
-            ++state.next_token;
-        slot->token = state.next_token;
-        slot->frames = take;
-        slot->state = SLOT_READY;
+        if (slot->state == SLOT_FREE) {
+            slot->frames = 0;
+            slot->state = SLOT_PARTIAL;
+        }
+        take = state.slot_frames - slot->frames;
+        if (take > frames)
+            take = frames;
+        convert_frames(slot->data + slot->frames * state.channels * 2, input, take);
+        slot->frames += take;
         state.written_frames += take;
-        state.fill_slot = (state.fill_slot + 1) % SLOT_COUNT;
         input += take * state.input_frame;
         frames -= take;
-        pthread_cond_broadcast(&changed);
+        if (slot->frames == state.slot_frames)
+            seal_partial();
     }
 done:
     pthread_mutex_unlock(&lock);
@@ -480,19 +633,33 @@ done:
 
 static void mmov_close(void)
 {
-    pthread_t thread;
     pthread_mutex_lock(&lock);
-    if (!state.running) {
+    if (state.running) {
+        state.closing = 1;
+        pthread_cond_broadcast(&changed);
+        while (!state.finished)
+            pthread_cond_wait(&changed, &lock);
+        state.running = 0;
+    }
+    pthread_mutex_unlock(&lock);
+}
+
+static void mmov_shutdown(void)
+{
+    pthread_t thread;
+    mmov_close();
+    pthread_mutex_lock(&lock);
+    if (!worker_started) {
         pthread_mutex_unlock(&lock);
         return;
     }
-    state.closing = 1;
-    thread = state.thread;
+    worker_quit = 1;
+    thread = worker_thread;
     pthread_cond_broadcast(&changed);
     pthread_mutex_unlock(&lock);
     pthread_join(thread, NULL);
     pthread_mutex_lock(&lock);
-    state.running = 0;
+    worker_started = 0;
     pthread_mutex_unlock(&lock);
 }
 
@@ -522,14 +689,26 @@ static void mmov_pause(short paused)
 
 static int mmov_free(void)
 {
-    int bytes = 0;
+    int bytes = 0, i;
     pthread_mutex_lock(&lock);
     if (state.running && !state.closing) {
-        bytes = (state.failed ? SLOT_COUNT : count_slots(SLOT_FREE)) *
-                state.slot_frames * state.input_frame;
-        if (++state.free_polls >= 2)
-            state.force_start = 1;
-        pthread_cond_broadcast(&changed);
+        if (state.failed)
+            bytes = SLOT_COUNT * state.slot_frames * state.input_frame;
+        else {
+            if (++state.free_polls >= 2) {
+                seal_partial();
+                if (!state.force_start) {
+                    state.force_start = 1;
+                    pthread_cond_broadcast(&changed);
+                }
+            }
+            for (i = 0; i < SLOT_COUNT; ++i) {
+                if (state.slots[i].state == SLOT_FREE)
+                    bytes += state.slot_frames * state.input_frame;
+                else if (state.slots[i].state == SLOT_PARTIAL)
+                    bytes += (state.slot_frames - state.slots[i].frames) * state.input_frame;
+            }
+        }
     }
     pthread_mutex_unlock(&lock);
     return bytes;
@@ -539,6 +718,8 @@ static int mmov_playing(void)
 {
     int playing;
     pthread_mutex_lock(&lock);
+    if (state.running && !state.failed && !state.closing)
+        seal_partial();
     state.force_start = 1; /* EOF must also drain a single short buffer. */
     playing = state.running && !state.failed && !state.closing &&
               count_slots(SLOT_FREE) != SLOT_COUNT;
@@ -575,17 +756,27 @@ static int mmov_written_time(void)
 
 static void mmov_get_volume(int *left, int *right)
 {
+    guint64 now;
     pthread_mutex_lock(&lock);
-    *left = left_volume;
-    *right = right_volume;
+    now = clock_milliseconds();
+    if ((!state.poisoned && mixer_left >= 0 && now && now < mixer_cache_until) ||
+        request_mixer(0, 0)) {
+        *left = mixer_left;
+        *right = mixer_right;
+    } else
+        *left = *right = -1;
     pthread_mutex_unlock(&lock);
 }
 
 static void mmov_set_volume(int left, int right)
 {
+    DWORD packed;
+    left = left < 0 ? 0 : left > 100 ? 100 : left;
+    right = right < 0 ? 0 : right > 100 ? 100 : right;
+    packed = (DWORD)((unsigned long)left * 65535UL / 100UL) |
+             (DWORD)(((unsigned long)right * 65535UL / 100UL) << 16);
     pthread_mutex_lock(&lock);
-    left_volume = left < 0 ? 0 : left > 100 ? 100 : left;
-    right_volume = right < 0 ? 0 : right > 100 ? 100 : right;
+    request_mixer(1, packed);
     pthread_mutex_unlock(&lock);
 }
 

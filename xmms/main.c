@@ -2464,7 +2464,12 @@ void mainwin_url_ok_clicked(GtkWidget * w, GtkWidget * entry)
 	{
 		playlist_clear();
 		g_strstrip(text);
-		if (strstr(text, ":/") == NULL && text[0] != '/')
+		if (strstr(text, ":/") == NULL && text[0] != '/'
+#ifdef __VMS
+		    /* Preserve native file specifications, as startup arguments do. */
+		    && strchr(text, ':') == NULL && strchr(text, '[') == NULL
+#endif
+		   )
 		{
 			char *temp = g_strconcat("http://", text, NULL);
 			playlist_add_url_string(temp);

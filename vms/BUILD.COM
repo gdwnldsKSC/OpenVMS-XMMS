@@ -52,7 +52,8 @@ $ if f$search("[.VMS_BUILD]LIB.DIR") .eqs. "" then create/directory [.VMS_BUILD.
 $ if f$search("[.VMS_BUILD]MPG.DIR") .eqs. "" then create/directory [.VMS_BUILD.MPG]
 $ copy [.VMS]CONFIG.H []CONFIG.H
 $ copy [.XMMS]I18N^.H.IN [.XMMS]I18N.H
-$ defs = "HAVE_CONFIG_H,XMMS_STATIC_PLUGINS,VMS_AS_IS,GENERIC_MOTIF_REDEFINES,GENERIC_PTHREAD_REDEFINES"
+$! Match the bundled OPL A9 packed stat and group-ID ABI.
+$ defs = "_DECC_SHORT_GID_T=1,HAVE_CONFIG_H,XMMS_STATIC_PLUGINS,VMS_AS_IS,GENERIC_MOTIF_REDEFINES,GENERIC_PTHREAD_REDEFINES"
 $ includes = source_default + ",XMMS_ROOT:[XMMS],GROOT:[GTK],GROOT:[GLIB],GROOT:[GLIB.GMODULE],VJID:"
 $ ccflags = "/NAMES=(AS_IS,SHORTEN)/POINTER_SIZE=32/FLOAT=IEEE/IEEE=DENORM/REENTRANCY=MULTITHREAD/STANDARD=RELAXED_ANSI89/PREFIX=ALL/MAIN=POSIX_EXIT"
 $ open/write options [.VMS_BUILD]XMMS.OPT
@@ -142,11 +143,10 @@ $ write options "SYS$SHARE:IPC$SHARE.EXE/SHARE"
 $ write options "SYS$SHARE:CMA$OPEN_RTL.EXE/SHARE"
 $ write options "SYS$SHARE:PTHREAD$RTL.EXE/SHARE"
 $ write options "SYS$SHARE:DECW$XLIBSHR.EXE/SHARE"
-$ write options "SYS$SHARE:DECW$XEXTLIBSHR.EXE/SHARE"
+$! GDK already links XEXT; importing its SHM symbols here conflicts with MMOV IPC_CLIENT.
 $ close options
 $ on warning then goto failed
-$ link/executable=[.VMS_BUILD]XMMS.EXE/map=[.VMS_BUILD]XMMS.MAP -
-    /full/traceback [.VMS_BUILD]XMMS.OPT/options
+$ @'here'BUILD_LINK.COM [.VMS_BUILD]XMMS.OPT [.VMS_BUILD]XMMS.EXE [.VMS_BUILD]XMMS.MAP
 $ write sys$output "XMMS native build complete: XMMS_ROOT:[VMS_BUILD]XMMS.EXE"
 $ set default 'old_default'
 $ set process/parse_style='old_parse'
@@ -165,7 +165,7 @@ $ search_reset = f$search(p1,8)
 $ new_object = f$search(p2,8)
 $ if new_object .eqs. "" .or. new_object .eqs. old_object
 $ then
-$   write sys$error "No new object for ''p1'; CC status ",f$fao("!8XL",cc_status)
+$   write sys$error "No new object for ''p1'; CC status ",f$fao("!8XL",f$integer(cc_status))
 $   exit %x0000002c
 $ endif
 $ write options p2

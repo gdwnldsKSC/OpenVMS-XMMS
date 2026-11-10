@@ -1,5 +1,5 @@
 $! Launch XMMS from an existing DECwindows session.
-$! P1 = optional audio file; P2 = optional GTK build root; P3 = optional OPL image.
+$! P1 = optional audio file or help/version flag; P2 GTK root; P3 OPL image.
 $! Installed as [XMMS]XMMS.COM beside XMMS.EXE and [.LIB] runtime libraries.
 $! Also works as [source.VMS]RUN.COM with [source.VMS_BUILD]XMMS.EXE.
 $! All logical names are process-local. The existing display is unchanged.
@@ -55,6 +55,11 @@ $ if p3 .nes. "" then define/process/nolog VMS_JACKETS 'p3'
 $ if f$search(image) .eqs. "" then goto missing
 $ if f$search("LIBGTK") .eqs. "" then goto missing
 $ if f$search("VMS_JACKETS") .eqs. "" then goto missing
+$! DCL uppercases unquoted parameters. Normalize only these known switches;
+$! preserve the spelling and case of every filename argument.
+$ flag = f$edit(p1,"UPCASE")
+$ if flag .eqs. "--VERSION" .or. flag .eqs. "-V" .or. -
+     flag .eqs. "--HELP" .or. flag .eqs. "-H" then p1 = f$edit(p1,"LOWERCASE")
 $ if p1 .eqs. ""
 $ then
 $   mcr 'image'

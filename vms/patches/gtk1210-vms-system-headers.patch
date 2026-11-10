@@ -1,0 +1,48 @@
+--- a/gtk/gtk/gtkfilesel.c
++++ b/gtk/gtk/gtkfilesel.c
+@@ -27,7 +27,13 @@
+ #include <stdio.h>
+ #include <sys/types.h>
+ #include <sys/stat.h>
++/* OpenVMS-XMMS modification, 2026-11-09: the native CRTL has no
++ * sys/param.h. Use its standard path limits; GLib supplies MIN/MAX. */
++#ifdef __VMS
++#include <limits.h>
++#else
+ #include <sys/param.h>
++#endif
+ #include <dirent.h>
+ #include <stdlib.h>
+ #include <unistd.h>
+--- a/gtk/gtk/gtkpreview.c
++++ b/gtk/gtk/gtkpreview.c
+@@ -28,7 +28,13 @@
+ #include <math.h>
+ #include <string.h>
+ #include <sys/types.h>
++/* OpenVMS-XMMS modification, 2026-11-09: the native CRTL has no
++ * sys/param.h. Use its standard path limits; GLib supplies MIN/MAX. */
++#ifdef __VMS
++#include <limits.h>
++#else
+ #include <sys/param.h>
++#endif
+ #include "gdk/gdkx.h"
+ #include "gdk/gdkrgb.h"
+ #include "gtkpreview.h"
+--- a/gtk/gtk/gtkrc.c
++++ b/gtk/gtk/gtkrc.c
+@@ -28,7 +28,13 @@
+ #include <ctype.h>
+ #include <unistd.h>
+ #include <sys/stat.h>
++/* OpenVMS-XMMS modification, 2026-11-09: the native CRTL has no
++ * sys/param.h. Use its standard path limits; GLib supplies MIN/MAX. */
++#ifdef __VMS
++#include <limits.h>
++#else
+ #include <sys/param.h>
++#endif
+ #include <fcntl.h>
+ #include <string.h>
+ #include <stdio.h>

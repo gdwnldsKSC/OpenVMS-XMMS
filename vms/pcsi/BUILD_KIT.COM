@@ -35,6 +35,8 @@ $ if f$edit(f$parse(p4,,,"TYPE"),"UPCASE") .nes. ".ZIP" then goto usage
 $ workdev = f$parse(p1,,,"DEVICE")
 $ workdir = f$parse(p1,,,"DIRECTORY")
 $ workroot = workdev + f$extract(0,f$length(workdir)-1,workdir) + ".]"
+$! PCSI needs a physical rooted material path; do not root a concealed logical twice.
+$ material_root = workdev + f$extract(0,f$length(workdir)-1,workdir) + ".MATERIAL.]"
 $ define/process/nolog/translation=concealed XMMS_KIT 'workroot'
 $ gtkdev = f$parse(p2,,,"DEVICE")
 $ gtkdir = f$parse(p2,,,"DIRECTORY")
@@ -45,6 +47,10 @@ $ if f$search("XMMS_KIT:[000000]MATERIAL.DIR") .nes. "" then goto occupied
 $ if f$search("XMMS_KIT:[000000]OUTPUT.DIR") .nes. "" then goto occupied
 $ if f$search("XMMS_KIT:[000000]VERIFY.DIR") .nes. "" then goto occupied
 $! Check every required input before creating output directories.
+$ if f$search(here + "XMMS.PCSI$DESC") .eqs. "" then goto missing
+$ if f$search(here + "XMMS.PCSI$TEXT") .eqs. "" then goto missing
+$ if f$search(here + "LICENSES.TXT") .eqs. "" then goto missing
+$ if f$search(here + "RELEASE_NOTES.TXT") .eqs. "" then goto missing
 $ app_image = kit_device + f$extract(0,dir_length-10,kit_directory) + ".VMS_BUILD]XMMS.EXE"
 $ if f$search(app_image) .eqs. "" then goto missing
 $ if f$search(vms_dir + "RUN.COM") .eqs. "" then goto missing
@@ -95,13 +101,14 @@ $ write source_info "OpenVMS, DECwindows and MMOV development files are external
 $ close source_info
 $ close manifest
 $ product package XMMS /producer=XMMS /base_system=AXPVMS /version=V1.2-11 -
-    /source='here'XMMS /material=XMMS_KIT:[MATERIAL.] -
+    /source='here'XMMS.PCSI$DESC /material='material_root' -
     /destination=XMMS_KIT:[OUTPUT] /format=sequential /log
 $! Independently reconstruct the material tree through PCSI, then compare it.
 $ product copy XMMS /producer=XMMS /base_system=AXPVMS /version=V1.2-11 -
     /source=XMMS_KIT:[OUTPUT] /destination=XMMS_KIT:[VERIFY] -
     /format=reference /options=noconfirm /log
 $ search_context = 717
+$ verified_files = 0
 $ verify_next:
 $ material = f$search("XMMS_KIT:[MATERIAL.XMMS...]*.*;",search_context)
 $ if material .eqs. "" then goto verify_done
@@ -112,8 +119,10 @@ $ if marker .eq. f$length(material_dir) then goto mismatch
 $ suffix = f$extract(marker+9,f$length(material_dir),material_dir)
 $ verify_file = "XMMS_KIT:[VERIFY." + suffix + f$parse(material,,,"NAME") + f$parse(material,,,"TYPE")
 $ call compare_checked "''material'" "''verify_file'"
+$ verified_files = verified_files + 1
 $ goto verify_next
 $ verify_done:
+$ if verified_files .ne. 18 then goto mismatch
 $ write sys$output "%XMMS-I-KITBUILT, runtime kit and source companion in XMMS_KIT:[OUTPUT]"
 $ write sys$output "%XMMS-I-VERIFIED, all re-extracted material matches native MD5/RMS attributes"
 $ write sys$output "Next: install, launch, play and remove on the isolated clean system."
@@ -147,7 +156,7 @@ $ if f$file_attributes(src,"RFM") .nes. f$file_attributes(dst,"RFM") then goto c
 $ if f$file_attributes(src,"MRS") .ne. f$file_attributes(dst,"MRS") then goto compare_bad
 $ if f$file_attributes(src,"LRL") .ne. f$file_attributes(dst,"LRL") then goto compare_bad
 $ if f$file_attributes(src,"RAT") .nes. f$file_attributes(dst,"RAT") then goto compare_bad
-$ if f$file_attributes(src,"EBK") .ne. f$file_attributes(dst,"EBK") then goto compare_bad
+$ if f$file_attributes(src,"EOF") .ne. f$file_attributes(dst,"EOF") then goto compare_bad
 $ if f$file_attributes(src,"FFB") .ne. f$file_attributes(dst,"FFB") then goto compare_bad
 $ exit 1
 $ compare_bad:

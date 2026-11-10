@@ -2,8 +2,9 @@
 
 This packages the already-built native player as `XMMS AXPVMS XMMS V1.2-11`.
 The target is VSI OpenVMS Alpha V8.4-2L2 with DECwindows Motif V1.7 and
-MMOV V2.2. Native packaging, clean installation, playback and removal are
-pending validation; source review alone is not a release qualification.
+MMOV V2.2. Release qualification requires native packaging, independent clean
+installation, installed-layout playback and removal checks. Record their
+results with the release artifacts; source review alone does not qualify a release.
 
 The native product registry confirms `VSI AXPVMS VMS V8.4-2L2`,
 `VSI AXPVMS DWMOTIF V1.7-F` and `DEC AXPVMS MMOV V2.2`. The dependency
@@ -26,6 +27,13 @@ files. Close XMMS before removal; personal playlists and settings are kept.
 ## Build the kit
 
 First complete the native builds described in [../DEPENDENCIES.md](../DEPENDENCIES.md).
+Use the production `BUILD_LINK.COM`, which enables `/THREADS_ENABLE=UPCALLS`
+on the Alpha executable. Native comparison with identical objects showed
+continuous MP3 playback and normal metadata-thread shutdown with this flag;
+the default disabled setting caused playback gaps and a blocked quit.
+Kernel multithreading remains disabled (`MKTHREADS=0`). No system-wide
+thread settings or private diagnostic images belong in the kit.
+
 Prepare a ZIP containing the **corresponding source for these exact images**:
 
 - The complete XMMS source tree, including these OpenVMS adaptations and build
@@ -123,11 +131,16 @@ initial runtime path without opening a display or playing audio. PCSI leaves
 a product installed if its IVP fails, so an IVP error is a failed validation,
 not proof that installation rolled back.
 
-Release qualification must install onto an isolated clean base, run the
-version check with build/development logicals absent, launch on the ordinary
-DECwindows display, play WAV and MP3, verify pause/seek/stop/volume, and remove
-XMMS with `PRODUCT REMOVE XMMS /PRODUCER=XMMS /BASE_SYSTEM=AXPVMS`. Confirm that
-PCSI-owned XMMS files are removed and the separate system products remain.
+Use an isolated clean base for installation, the version check with build
+logicals absent, removal and reinstallation. Remove with
+`PRODUCT REMOVE XMMS /PRODUCER=XMMS /BASE_SYSTEM=AXPVMS`; confirm that PCSI-owned
+XMMS files disappear and the separate system products remain. This loader and
+package-lifecycle test can run without a display.
+
+Separately test the installed layout on an ordinary DECwindows display with
+source/build logicals cleared: play WAV and MP3, and verify pause, seek, stop,
+volume and balance. Record this graphical playback result separately from the
+headless clean-system package checks.
 
 References: [VSI PCSI manual](https://docs.vmssoftware.com/vsi-openvms-polycenter-software-installation-utility-manual/),
 [PRODUCT command reference](https://docs.vmssoftware.com/vsi-openvms-system-management-utilities-reference-manual-volume-ii-m-z/).

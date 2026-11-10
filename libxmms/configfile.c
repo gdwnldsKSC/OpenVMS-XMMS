@@ -50,11 +50,37 @@ ConfigFile *xmms_cfg_open_file(gchar * filename)
 	FILE *file;
 	char *buffer, **lines, *tmp;
 	int i;
+#ifdef __VMS
+	GString *contents;
+	char chunk[4096];
+	int read_error;
+#else
 	struct stat stats;
+#endif
 	ConfigSection *section = NULL;
 
 	g_return_val_if_fail(filename != NULL, FALSE);
 
+#ifdef __VMS
+	/* OPL translates this pathname; native lstat does not apply that
+	 * translation. Read text through the same stream instead of using a
+	 * separate native pathname or RMS physical byte count. */
+	if (!(file = fopen(filename, "r")))
+		return NULL;
+	contents = g_string_new(NULL);
+	while (fgets(chunk, sizeof(chunk), file))
+		g_string_append(contents, chunk);
+	read_error = ferror(file);
+	if (fclose(file) != 0)
+		read_error = 1;
+	if (read_error)
+	{
+		g_string_free(contents, TRUE);
+		return NULL;
+	}
+	buffer = contents->str;
+	g_string_free(contents, FALSE);
+#else
 	if (lstat(filename, &stats) == -1)
 		return NULL;
 	if (!(file = fopen(filename, "r")))
@@ -69,6 +95,7 @@ ConfigFile *xmms_cfg_open_file(gchar * filename)
 	}
 	fclose(file);
 	buffer[stats.st_size] = '\0';
+#endif
 
 	cfg = g_malloc0(sizeof (ConfigFile));
 	lines = g_strsplit(buffer, "\n", 0);

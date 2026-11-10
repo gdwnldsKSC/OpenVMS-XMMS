@@ -22,6 +22,34 @@
 #ifndef _GETOPT_H
 #define _GETOPT_H 1
 
+#ifdef __VMS
+/* OpenVMS-XMMS, 2026-11-09: retain the bundled GNU parser without
+   defining the CRTL getopt entry point or its process-global option state.
+   Read native declarations before installing these private aliases. */
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <unixlib.h>
+#undef getopt
+#undef getopt_long
+#undef getopt_long_only
+#undef _getopt_internal
+#undef __getopt_initialized
+#undef optarg
+#undef optind
+#undef opterr
+#undef optopt
+#define getopt xmms_vms_getopt
+#define getopt_long xmms_vms_getopt_long
+#define getopt_long_only xmms_vms_getopt_long_only
+#define _getopt_internal xmms_vms_getopt_internal
+#define __getopt_initialized xmms_vms_getopt_initialized
+#define optarg xmms_vms_optarg
+#define optind xmms_vms_optind
+#define opterr xmms_vms_opterr
+#define optopt xmms_vms_optopt
+#endif
+
 #ifdef	__cplusplus
 extern "C"
 {

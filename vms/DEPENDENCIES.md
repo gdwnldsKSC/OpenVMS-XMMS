@@ -1,9 +1,14 @@
 # Native build dependencies
 
 The target is OpenVMS Alpha V8.4-2L2 with VSI C, DECwindows and the working
-MMOV installation. The first native build and desktop playback are still
-pending validation. No GNV, Linux audio driver, Perl or Autoconf installation
-is required by these DCL build procedures.
+MMOV installation. GTK and XMMS have compiled and linked natively on the
+isolated target system. Native validation includes continuous 20-second WAV
+and full-track MP3 playback, file selection and playlist display, normal
+process exit, and settings preserved across a clean restart. Detailed runtime,
+package installation, removal and installed-runtime checks are recorded
+separately in the release validation report. No GNV,
+Linux audio driver, Perl or Autoconf installation is required by these DCL
+build procedures.
 
 The isolated build system's native product registry reports these exact
 installed dependencies:
@@ -25,7 +30,7 @@ notices. The SHA-256 values below describe the downloaded bytes.
 | [Published GTK A1 portability patch](https://www.digiater.nl/openvms/decus/vmslt03a/vu/gtk1210-a1_patch.tar) | `a51b249b10556a81f8da67d0ac25f073f561b713f82b41a21b201000a9add6dc` |
 
 The GTK archive includes its matching GLib sources and native build files.
-Apply the small [VMS file-picker patch](patches/README.md) to the original
+Apply the [VMS file-picker and system-header patches](patches/README.md) to the original
 GTK download before transfer. The kit's corresponding-source archive already
 contains the patched GTK tree.
 The OPL PCSI kit contains the runtime; the separate source archive supplies
@@ -89,14 +94,40 @@ configures only its dependency tree. It uses the archive's generated enum
 and marshal files, applies the published DECwindows `X11/shape.h` include
 correction, and supplies the POSIX thread result conventions. A compiler
 preinclude reads current CRTL declarations before the older OPL name mappings.
-Compiler and linker failures are returned to the caller; the player uses
-`/MAIN=POSIX_EXIT` so Unix-style failures become failing VMS statuses. Generated objects and the XMMS
+Compiler and linker failures are returned to the caller. The link wrapper
+retains diagnostics and permits only `LINK-W-WRNERS`, which repeats compiler
+warnings already visible in the build; unresolved or multiply defined symbols
+still fail. The player uses `/MAIN=POSIX_EXIT` so Unix-style failures become
+failing VMS statuses. Generated objects and the XMMS
 image go under `[XMMS.VMS_BUILD]`.
 
+The executable must link with `/THREADS_ENABLE=UPCALLS`, supplied by
+`BUILD_LINK.COM`. This allows the OpenVMS thread scheduler to handle a
+thread waiting in a blocking system call. Alpha's default disables upcalls;
+see the [VSI linker documentation](https://docs.vmssoftware.com/vsi-openvms-linker-utility-manual/).
+A native comparison using identical compiled objects changed only this flag:
+MP3 playback became continuous across a 204.6-second track, and the playlist
+metadata thread and audio worker both joined during normal quit. The image
+keeps kernel multithreading disabled (`MKTHREADS=0`); no system-wide thread
+setting is changed. Do not omit this flag in a custom link procedure.
+
 All components use 32-bit pointers, case-preserving shortened external names
-and IEEE floating point, matching the native GTK and MMOV interfaces. The
-initial native image statically registers WAV, MP3 and MMOV plugins. Unix
+and IEEE floating point, matching the native GTK and MMOV interfaces. Both
+builds define `_DECC_SHORT_GID_T=1` before system headers because the OPL A9
+runtime uses the legacy 49-byte `struct stat` with a 16-bit group ID. Current
+CRTL defaults produce a 51-byte structure with shifted size and timestamp
+fields, which is incompatible with that runtime. This switch is required
+even when the compiler accepts the original source. The initial native image
+statically registers WAV, MP3 and MMOV plugins. Unix
 remote-control sockets and optional platform-specific plugins are excluded.
+
+The VMS configuration reader uses the same OPL-translated text stream as the
+writer. It does not use native `lstat` to size the file first: current CRTL
+`lstat` does not apply OPL's legacy hidden-directory translation, so it can
+report a missing `/.xmms/config` even when the jacketed stream opens the saved
+`_XMMS` configuration. Reading the stream also avoids assuming that an RMS
+physical byte count equals translated text length. Other platforms retain
+the original reader.
 
 Launch from a normal DECwindows DECterm with its existing display:
 

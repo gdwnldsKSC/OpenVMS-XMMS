@@ -4,14 +4,36 @@ A native port of classic XMMS 1.2.11 to OpenVMS Alpha, using GTK+ 1.2 for the
 DECwindows interface and Multimedia Services for OpenVMS (MMOV) for sound.
 The immediate target is a working desktop music player on OpenVMS V8.4-2L2.
 
-**Status:** implementation and native build verification are in progress.
-The MMOV backend has passed private host-side behavior checks; this is not
-yet evidence of a working Alpha executable or audible native playback.
+**Status:** GTK and XMMS compile and link natively on OpenVMS Alpha
+V8.4-2L2 with VSI C V7.4-002. The executable reports version 1.2.11 and
+opens its DECwindows player window. Native WAV and full-track MP3 playback
+are continuous, the file picker and playlist work, normal quit completes,
+and saved settings survive a restart. The Alpha executable must enable
+thread upcalls, as the supplied linker procedure does. Consult the release
+validation report for detailed runtime, package installation, removal and
+installed-runtime results.
 
 The first build includes the original MP3 and WAV decoders and links them
 with the MMOV output plugin. It keeps the player, playlist, equalizer, and
 built-in visual display. It does not require a Unix shell or an autotools
 installation on VMS.
+
+## Native installation
+
+The [PCSI build and installation instructions](vms/pcsi/README.md) describe
+the runtime kit. It installs under `SYS$COMMON:[XMMS]` and includes private
+GTK, GLib and OPL runtime libraries. The target system needs DECwindows and
+a working, licensed MMOV installation; no compiler or SDK is needed to run
+the installed player.
+
+Launch it from an ordinary DECwindows session:
+
+```text
+$ @SYS$COMMON:[XMMS]XMMS.COM
+```
+
+The launcher defines its library logical names only in the calling process.
+It does not replace the desktop session or change system startup files.
 
 ## Building
 

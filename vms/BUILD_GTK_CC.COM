@@ -1,5 +1,6 @@
 $! Compiler for the native GTK 1.2.10 port. Installed into its build tree.
-$ defs = "HAVE_CONFIG_H,VMS_AS_IS,USE_XIM,GTK_NO_CHECK_CASTS"
+$! OPL A9 uses the legacy 49-byte stat layout with a 16-bit group ID.
+$ defs = "HAVE_CONFIG_H,VMS_AS_IS,USE_XIM,GTK_NO_CHECK_CASTS,_DECC_SHORT_GID_T=1"
 $ defs = defs + ",GENERIC_MOTIF_REDEFINES,GENERIC_PTHREAD_REDEFINES"
 $ defs = defs + ",HAVE_PTHREAD_COND_TIMEDWAIT_POSIX,HAVE_PTHREAD_MUTEX_TRYLOCK_POSIX"
 $ unit = f$edit(srcdir,"UPCASE")
@@ -30,7 +31,7 @@ $ search_reset = f$search(fullname,8)
 $ new_object = f$search(obj + ".OBJ",8)
 $ if new_object .eqs. "" .or. new_object .eqs. old_object
 $ then
-$   write sys$error "CC produced no new object: ",fullname," STATUS=",f$fao("!8XL",cc_status)
+$   write sys$error "CC produced no new object: ",fullname," STATUS=",f$fao("!8XL",f$integer(cc_status))
 $   exit %x0000002c
 $ endif
 $! Compiler warnings are acceptable only when a fresh object was produced.

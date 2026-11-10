@@ -4,6 +4,9 @@ Target: VSI OpenVMS Alpha V8.4-2L2, DECwindows Motif V1.7, MMOV V2.2.
 This port builds the classic GTK 1.2 desktop interface with local WAV and
 MP3 decoding and native MMOV waveform output. It uses 32-bit pointers and
 IEEE floating point. The toolkit runtimes are private to this installation.
+The executable enables OpenVMS thread upcalls for concurrent playback and
+background work. This is an image setting; no system thread configuration
+change is required.
 
 Start from an existing DECwindows DECterm:
   @SYS$COMMON:[XMMS]XMMS.COM
@@ -17,8 +20,11 @@ For a nondefault PRODUCT /DESTINATION, substitute that root for SYS$COMMON.
 MMOV must already be running and have a working audio device. On this ES1371
 emulator installation, use the separately supplied patched MMOV V2.2 kit
 and its standard documented startup/shutdown configuration. XMMS does not
-replace or reconfigure MMOV. Its volume control scales its own PCM stream;
-the MMOV system mixer remains shared with other multimedia applications.
+replace or reconfigure MMOV. Playback uses native waveform output device 0.
+The volume and balance sliders control that device's shared MMOV mixer.
+Startup reads its existing level and preserves an intentional mute; moving
+the slider changes the system output level explicitly. No startup volume
+is forced, and PCM samples are not attenuated a second time in software.
 
 WAV, MP3 and MMOV plugins are linked into the image. Unix remote session
 control and optional plugins are not built. The default skin is compiled
